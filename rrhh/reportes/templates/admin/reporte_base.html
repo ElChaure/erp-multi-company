@@ -1,0 +1,252 @@
+{% extends "admin/base_site.html" %}
+{% load reporte_extras %}
+
+{% block title %}{{ titulo }} - Reportes{% endblock %}
+
+{% block content %}
+<div id="content-main">
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div>
+            <h1 style="margin: 0;">{{ titulo }}</h1>
+            {% if descripcion %}
+                <p style="color: #666; margin: 4px 0 0 0;">{{ descripcion }}</p>
+            {% endif %}
+        </div>
+        <a href="/admin/reportes/" class="button" style="background: #999;">
+            Volver al índice
+        </a>
+    </div>
+
+    <!-- Filtros -->
+    <form method="get" style="background: #f8f8f8; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+
+            {% if 'fecha_desde' in filtros %}
+                <div>
+                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 4px;">Fecha desde</label>
+                    <input type="date" name="fecha_desde" value="{{ filtros.fecha_desde }}"
+                           style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px;">
+                </div>
+            {% endif %}
+
+            {% if 'fecha_hasta' in filtros %}
+                <div>
+                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 4px;">Fecha hasta</label>
+                    <input type="date" name="fecha_hasta" value="{{ filtros.fecha_hasta }}"
+                           style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px;">
+                </div>
+            {% endif %}
+
+            {% if 'anio' in filtros %}
+                <div>
+                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 4px;">Año</label>
+                    <input type="number" name="anio" value="{{ filtros.anio }}"
+                           style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px;">
+                </div>
+            {% endif %}
+
+            {% if 'estatus' in filtros %}
+                <div>
+                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 4px;">Estatus</label>
+                    <select name="estatus" style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px;">
+                        <option value="">Todos</option>
+                        <option value="activo" {% if filtros.estatus == 'activo' %}selected{% endif %}>Activo</option>
+                        <option value="baja" {% if filtros.estatus == 'baja' %}selected{% endif %}>Baja</option>
+                        <option value="licencia" {% if filtros.estatus == 'licencia' %}selected{% endif %}>Licencia</option>
+                        <option value="vacaciones" {% if filtros.estatus == 'vacaciones' %}selected{% endif %}>Vacaciones</option>
+                        <option value="aprobada" {% if filtros.estatus == 'aprobada' %}selected{% endif %}>Aprobada</option>
+                        <option value="pendiente" {% if filtros.estatus == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                        <option value="rechazada" {% if filtros.estatus == 'rechazada' %}selected{% endif %}>Rechazada</option>
+                    </select>
+                </div>
+            {% endif %}
+
+            {% if departamentos %}
+                <div>
+                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 4px;">Departamento</label>
+                    <select name="departamento_id" style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px;">
+                        <option value="">Todos</option>
+                        {% for d in departamentos %}
+                            <option value="{{ d.id }}" {% if filtros.departamento_id == d.id %}selected{% endif %}>{{ d.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endif %}
+
+            {% if cargos %}
+                <div>
+                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 4px;">Cargo</label>
+                    <select name="cargo_id" style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px;">
+                        <option value="">Todos</option>
+                        {% for c in cargos %}
+                            <option value="{{ c.id }}" {% if filtros.cargo_id == c.id %}selected{% endif %}>{{ c.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endif %}
+
+            {% if sedes %}
+                <div>
+                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 4px;">Sede</label>
+                    <select name="sede_id" style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px;">
+                        <option value="">Todas</option>
+                        {% for s in sedes %}
+                            <option value="{{ s.id }}" {% if filtros.sede_id == s.id %}selected{% endif %}>{{ s.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endif %}
+
+            {% if tipos_ausencia %}
+                <div>
+                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 4px;">Tipo de ausencia</label>
+                    <select name="tipo_id" style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px;">
+                        <option value="">Todos</option>
+                        {% for t in tipos_ausencia %}
+                            <option value="{{ t.id }}" {% if filtros.tipo_id == t.id %}selected{% endif %}>{{ t.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endif %}
+
+            {% if 'nacionalidad' in filtros %}
+                <div>
+                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 4px;">Nacionalidad</label>
+                    <select name="nacionalidad" style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px;">
+                        <option value="">Todas</option>
+                        <option value="V" {% if filtros.nacionalidad == 'V' %}selected{% endif %}>Venezolano</option>
+                        <option value="E" {% if filtros.nacionalidad == 'E' %}selected{% endif %}>Extranjero</option>
+                        <option value="P" {% if filtros.nacionalidad == 'P' %}selected{% endif %}>Pasaporte</option>
+                    </select>
+                </div>
+            {% endif %}
+
+            {% if usuarios_auditoria %}
+                <div>
+                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 4px;">Usuario</label>
+                    <select name="usuario_id" style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px;">
+                        <option value="">Todos</option>
+                        {% for u in usuarios_auditoria %}
+                            <option value="{{ u.id }}" {% if filtros.usuario_id == u.id %}selected{% endif %}>
+                                {{ u.username }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endif %}
+
+            {% if acciones_auditoria %}
+                <div>
+                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 4px;">Acción</label>
+                    <select name="accion" style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px;">
+                        <option value="">Todas</option>
+                        {% for value, label in acciones_auditoria %}
+                            <option value="{{ value }}" {% if filtros.accion == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endif %}
+
+            {% if tablas_auditoria %}
+                <div>
+                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 4px;">Tabla</label>
+                    <select name="tabla" style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px;">
+                        <option value="">Todas</option>
+                        {% for t in tablas_auditoria %}
+                            <option value="{{ t }}" {% if filtros.tabla == t %}selected{% endif %}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endif %}
+
+            {% if 'search' in filtros %}
+                <div>
+                    <label style="display: block; font-size: 11px; color: #666; margin-bottom: 4px;">Buscar</label>
+                    <input type="text" name="search" value="{{ filtros.search }}"
+                           placeholder="Descripción, usuario, tabla..."
+                           style="width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px;">
+                </div>
+            {% endif %}
+
+        </div>
+
+
+
+        <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+            <button type="submit" class="button" style="background: #417690;">
+                Filtrar
+            </button>
+            <a href="{{ url_actual }}" class="button" style="background: #999;">
+                Limpiar filtros
+            </a>
+            <button type="submit" name="formato" value="xlsx" class="button" style="background: #059669;">
+                Descargar Excel
+            </button>
+            <button type="submit" name="formato" value="pdf" class="button" style="background: #dc2626;">
+                Descargar PDF
+            </button>
+        </div>
+    </form>
+
+    <!-- Resumen -->
+    <div style="background: #eff6ff; border-left: 4px solid #2563eb; padding: 10px 15px; margin-bottom: 15px;">
+        <strong>Total de registros:</strong> {{ total }}
+    </div>
+
+    <!-- Tabla -->
+    {% if datos %}
+    <div style="overflow-x: auto; border: 1px solid #ddd; border-radius: 4px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+                <tr style="background: #417690; color: white;">
+                    {% for col in columnas %}
+                        <th style="padding: 8px 10px; text-align: {% if col.align == 'right' %}right{% elif col.align == 'center' %}center{% else %}left{% endif %}; white-space: nowrap;">
+                            {{ col.label }}
+                        </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for fila in datos %}
+                    <tr style="border-bottom: 1px solid #eee; {% cycle '' 'background: #fafafa;' %}">
+                        {% for col in columnas %}
+                            <td style="padding: 6px 10px; text-align: {% if col.align == 'right' %}right{% elif col.align == 'center' %}center{% else %}left{% endif %};">
+                                {{ fila|get_item:col.key|default_if_none:"" }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <div style="text-align: center; padding: 40px; color: #999; background: #f9f9f9; border-radius: 4px;">
+            <p style="font-size: 16px;">No hay datos para mostrar con los filtros aplicados.</p>
+        </div>
+    {% endif %}
+
+</div>
+
+<style>
+    .button {
+        display: inline-block;
+        color: white !important;
+        padding: 8px 16px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: bold;
+        border: none;
+        cursor: pointer;
+    }
+    .button:hover {
+        opacity: 0.9;
+    }
+    input[type="date"], select {
+        font-size: 13px;
+    }
+</style>
+{% endblock %}

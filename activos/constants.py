@@ -1,0 +1,13 @@
+# activos/constants.py
+
+METODO_LINEA_RECTA = "LINEA_RECTA"
+METODO_UNIDADES_PRODUCCION = "UNIDADES_PRODUCCION"
+METODO_SUMA_DIGITOS = "SUMA_DIGITOS"
+METODO_SALDOS_DECRECIENTES = "SALDOS_DECRECIENTES"
+
+METODOS_DEPRECIACION = [
+    (METODO_LINEA_RECTA, "Línea Recta (Fiscal / Gerencial)"),
+    (METODO_UNIDADES_PRODUCCION, "Unidades de Producción (Maquinarias)"),
+    (METODO_SUMA_DIGITOS, "Suma de Dígitos (Acelerado)"),
+    (METODO_SALDOS_DECRECIENTES, "Saldos Decrecientes (Acelerado)"),
+]

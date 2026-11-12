@@ -1,0 +1,340 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Vacaciones - {{ empleado.nombre_completo }}{% endblock %}
+
+{% block content %}
+{# ═══════════════════════════════════════════════════ #}
+{# HEADER                                            #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="d-flex flex-wrap justify-content-between align-items-start mb-4 gap-3">
+    <div>
+        <a href="{% url 'rrhh:vacaciones_lista' %}" class="text-muted small text-decoration-none">
+            <i class="bi bi-arrow-left"></i> Volver al listado
+        </a>
+        <h1 class="mb-1 mt-1">
+            {{ empleado.nombre_completo }}
+            <small class="text-muted fs-6">· {{ empleado.numero_empleado }}</small>
+        </h1>
+        <p class="text-muted mb-0 small">
+            {{ empleado.cargo.nombre|default:"Sin cargo" }}
+            · Ingreso: <strong>{{ empleado.fecha_ingreso|date:"d/m/Y" }}</strong>
+            · <span class="badge bg-info text-dark">{{ empleado.antiguedad_dias|floatformat:0 }} días de servicio</span>
+        </p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        {% if anios_disponibles %}
+        <select id="filtro-anio" class="form-select form-select-sm" style="width: auto;"
+                onchange="location.href='?anio=' + this.value">
+            {% for a in anios_disponibles %}
+            <option value="{{ a }}" {% if anio == a %}selected{% endif %}>Año {{ a }}</option>
+            {% endfor %}
+        </select>
+        {% endif %}
+        <button type="button" class="btn btn-sm btn-outline-warning"
+                data-bs-toggle="modal" data-bs-target="#modal-ajustar">
+            <i class="bi bi-sliders"></i> Ajustar
+        </button>
+        <form method="post" action="{% url 'rrhh:vacaciones_recalcular' empleado.id %}" class="d-inline">
+            {% csrf_token %}
+            <input type="hidden" name="anio" value="{{ anio }}">
+            <button type="submit" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-arrow-clockwise"></i> Recalcular
+            </button>
+        </form>
+    </div>
+</div>
+
+{% if not saldo %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    No hay saldo registrado para el año {{ anio }}. Usa "Recalcular" para generarlo.
+</div>
+{% else %}
+
+{# ═══════════════════════════════════════════════════ #}
+{# KPIs DEL SALDO                                    #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Derecho ({{ anio }})</h6>
+                <h3 class="mb-1">{{ saldo.dias_derecho|floatformat:2 }}</h3>
+                <small class="text-muted">Días que le corresponden</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Tomados</h6>
+                <h3 class="mb-1 text-primary">{{ saldo.dias_tomados|floatformat:2 }}</h3>
+                <small class="text-muted">Disfrutados</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Ajustes</h6>
+                <h3 class="mb-1 {% if saldo.dias_ajuste > 0 %}text-success{% elif saldo.dias_ajuste < 0 %}text-danger{% endif %}">
+                    {{ saldo.dias_ajuste|floatformat:2 }}
+                </h3>
+                <small class="text-muted">
+                    Pagados: {{ saldo.dias_pagados|floatformat:2 }}
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 border-warning">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Pendientes</h6>
+                <h2 class="mb-1 text-warning">{{ saldo.dias_pendientes|floatformat:2 }}</h2>
+                <small class="text-muted">Días disponibles</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Barra de progreso #}
+<div class="card mb-4">
+    <div class="card-body">
+        {% with total=saldo.dias_derecho usado=saldo.dias_tomados %}
+        <div class="d-flex justify-content-between mb-2">
+            <span class="small text-muted">Uso del saldo ({{ anio }})</span>
+            <span class="small fw-semibold">
+                {{ usado|floatformat:0 }} / {{ total|floatformat:0 }} días
+            </span>
+        </div>
+        <div class="progress" style="height: 20px;">
+            {% if total > 0 %}
+            <div class="progress-bar bg-warning" role="progressbar"
+                 style="width: {% widthratio usado total 100 %}%">
+                {% widthratio usado total 100 %}%
+            </div>
+            {% endif %}
+        </div>
+        {% endwith %}
+    </div>
+</div>
+
+{# Vencimiento #}
+{% if info_venc and info_venc.fecha_vencimiento %}
+<div class="alert alert-{% if info_venc.esta_por_vencer %}warning{% else %}light{% endif %} mb-4">
+    <i class="bi bi-alarm"></i>
+    <strong>Fecha límite de uso:</strong> {{ info_venc.fecha_vencimiento|date:"d/m/Y" }}
+    {% if info_venc.dias_restantes is not None %}
+    · 
+    {% if info_venc.dias_restantes > 0 %}
+    Quedan <strong>{{ info_venc.dias_restantes }} días</strong>
+    {% else %}
+    <span class="text-danger">¡Ya vencido!</span>
+    {% endif %}
+    {% endif %}
+</div>
+{% endif %}
+
+{# ═══════════════════════════════════════════════════ #}
+{# HISTÓRICO DE MOVIMIENTOS                          #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="card mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="bi bi-list-ul text-secondary"></i>
+            Histórico de movimientos
+        </h6>
+        <span class="badge bg-light text-dark">{{ page_mov.paginator.count }} movimiento(s)</span>
+    </div>
+    <div class="card-body p-0">
+        {% if page_mov %}
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th class="text-center">Días</th>
+                        <th class="text-center">Saldo anterior</th>
+                        <th class="text-center">Saldo nuevo</th>
+                        <th>Motivo</th>
+                        <th>Usuario</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in page_mov %}
+                    <tr>
+                        <td class="small text-muted">{{ m.created_at|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            {% if m.tipo == "asignacion" %}
+                            <span class="badge bg-info text-dark">Asignación</span>
+                            {% elif m.tipo == "solicitud" %}
+                            <span class="badge bg-warning text-dark">Solicitud</span>
+                            {% elif m.tipo == "ajuste" %}
+                            <span class="badge bg-secondary">Ajuste</span>
+                            {% elif m.tipo == "pago" %}
+                            <span class="badge bg-primary">Pago</span>
+                            {% elif m.tipo == "vencimiento" %}
+                            <span class="badge bg-danger">Vencimiento</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center fw-semibold {% if m.dias > 0 %}text-success{% else %}text-danger{% endif %}">
+                            {{ m.dias|floatformat:2 }}
+                        </td>
+                        <td class="text-center text-muted small">{{ m.saldo_anterior|floatformat:2 }}</td>
+                        <td class="text-center small">{{ m.saldo_nuevo|floatformat:2 }}</td>
+                        <td class="small">{{ m.motivo|default:"—" }}</td>
+                        <td class="small text-muted">
+                            {{% if m.usuario %}
+								{{ m.usuario.get_full_name|default:m.usuario.username }}
+							{% else %}
+								<span class="text-muted">Sistema</span>
+							{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            <p class="mb-0">Sin movimientos registrados</p>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if page_mov.has_other_pages %}
+    <div class="card-footer bg-white">
+        <nav>
+            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                {% if page_mov.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?anio={{ anio }}&page_mov={{ page_mov.previous_page_number }}">«</a>
+                </li>
+                {% endif %}
+                <li class="page-item active">
+                    <span class="page-link">{{ page_mov.number }} / {{ page_mov.paginator.num_pages }}</span>
+                </li>
+                {% if page_mov.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?anio={{ anio }}&page_mov={{ page_mov.next_page_number }}">»</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+{# ═══════════════════════════════════════════════════ #}
+{# ÚLTIMAS SOLICITUDES                               #}
+{# ═══════════════════════════════════════════════════ #}
+{% if solicitudes %}
+<div class="card mb-4">
+    <div class="card-header bg-white">
+        <h6 class="mb-0">
+            <i class="bi bi-file-earmark-text text-secondary"></i>
+            Últimas solicitudes de ausencia
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Desde</th>
+                        <th>Hasta</th>
+                        <th class="text-center">Días</th>
+                        <th>Estatus</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sol in solicitudes %}
+                    <tr>
+                        <td class="small text-muted">{{ sol.fecha_solicitud|date:"d/m/Y" }}</td>
+                        <td class="small">{{ sol.tipo.nombre }}</td>
+                        <td class="small">{{ sol.fecha_inicio|date:"d/m/Y" }}</td>
+                        <td class="small">{{ sol.fecha_fin|date:"d/m/Y" }}</td>
+                        <td class="text-center small">{{ sol.dias_solicitados|floatformat:0 }}</td>
+                        <td>
+                            {% if sol.estatus == "pendiente" %}
+                            <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% elif sol.estatus == "aprobada" %}
+                            <span class="badge bg-success">Aprobada</span>
+                            {% elif sol.estatus == "rechazada" %}
+                            <span class="badge bg-danger">Rechazada</span>
+                            {% elif sol.estatus == "cancelada" %}
+                            <span class="badge bg-secondary">Cancelada</span>
+                            {% else %}
+                            <span class="badge bg-light text-dark">{{ sol.get_estatus_display }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# ═══════════════════════════════════════════════════ #}
+{# MODAL AJUSTAR                                     #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="modal fade" id="modal-ajustar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'rrhh:vacaciones_ajustar' empleado.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="anio" value="{{ anio }}">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title">
+                        <i class="bi bi-sliders"></i> Ajuste manual
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-3">
+                        Vas a ajustar el saldo de <strong>{{ anio }}</strong>
+                        de <strong>{{ empleado.nombre_completo }}</strong>.
+                    </p>
+
+                    <div class="mb-3">
+                        <label class="form-label small">Días a ajustar</label>
+                        <input type="number" name="dias" class="form-control"
+                               step="0.01" required
+                               placeholder="Ej: 5 o -2.5">
+                        <small class="text-muted">
+                            Positivo suma días, negativo los resta.
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small">Motivo *</label>
+                        <textarea name="motivo" class="form-control" rows="2"
+                                  required placeholder="Ej: Corrección por error en carga"></textarea>
+                    </div>
+
+                    <div class="alert alert-info small mb-0">
+                        <i class="bi bi-info-circle"></i>
+                        El ajuste queda registrado en el histórico de movimientos
+                        con tu nombre de usuario.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-check2"></i> Aplicar ajuste
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}

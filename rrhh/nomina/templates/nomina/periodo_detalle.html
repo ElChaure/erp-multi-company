@@ -1,0 +1,528 @@
+{% extends "rrhh/base.html" %}
+
+{% block title %}Nómina - Periodo #{{ periodo.numero_periodo }}{% endblock %}
+
+{% block content %}
+
+{# ═══════════════════════════════════════════════════════════ #}
+{#  HEADER                                                    #}
+{# ═══════════════════════════════════════════════════════════ #}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start mb-4 gap-3">
+    <div>
+        <a href="{% url 'rrhh:nomina_periodo_lista' %}" class="text-muted small text-decoration-none">
+            <i class="bi bi-arrow-left"></i> Volver al listado
+        </a>
+        <h1 class="mb-1 mt-1">
+            {{ periodo.get_tipo_display }} #{{ periodo.numero_periodo }}
+            <small class="text-muted fs-6">· {{ periodo.anio }}</small>
+        </h1>
+        <p class="text-muted mb-0 small">
+            {{ periodo.fecha_inicio|date:"d/m/Y" }} → {{ periodo.fecha_fin|date:"d/m/Y" }}
+            · Pago: <strong>{{ periodo.fecha_pago|date:"d/m/Y" }}</strong>
+            {% if periodo.empresa %}
+                · {{ periodo.empresa.nombre_comercial|default:periodo.empresa.razon_social }}
+            {% endif %}
+        </p>
+    </div>
+
+    {# Estado + botones #}
+    <div class="text-end">
+        <div class="mb-2">
+            {% if periodo.estatus == "abierto" %}
+                <span class="badge bg-info text-dark fs-6">Abierto</span>
+            {% elif periodo.estatus == "calculado" %}
+                <span class="badge bg-warning text-dark fs-6">Calculado</span>
+            {% elif periodo.estatus == "aprobado" %}
+                <span class="badge bg-primary fs-6">Aprobado</span>
+            {% elif periodo.estatus == "pagado" %}
+                <span class="badge bg-success fs-6">Pagado</span>
+            {% elif periodo.estatus == "cerrado" %}
+                <span class="badge bg-secondary fs-6">Cerrado</span>
+            {% elif periodo.estatus == "cancelado" %}
+                <span class="badge bg-danger fs-6">Cancelado</span>
+            {% endif %}
+        </div>
+
+        {% if puede_gestionar %}
+        <div class="d-flex flex-wrap gap-1 justify-content-end">
+            {# Calcular #}
+            {% if puede_calcular %}
+                <button type="button" class="btn btn-sm btn-primary"
+                        data-bs-toggle="modal" data-bs-target="#modal-calcular">
+                    <i class="bi bi-calculator"></i>
+                    {% if periodo.estatus == "calculado" %}Recalcular{% else %}Calcular{% endif %}
+                </button>
+            {% endif %}
+
+            {# Aprobar #}
+            {% if puede_aprobar %}
+                <button type="button" class="btn btn-sm btn-warning"
+                        data-bs-toggle="modal" data-bs-target="#modal-aprobar">
+                    <i class="bi bi-check-circle"></i> Aprobar
+                </button>
+            {% endif %}
+
+            {# Cerrar #}
+            {% if puede_cerrar %}
+                <button type="button" class="btn btn-sm btn-secondary"
+                        data-bs-toggle="modal" data-bs-target="#modal-cerrar">
+                    <i class="bi bi-lock"></i> Cerrar
+                </button>
+            {% endif %}
+			
+			{# Generar Asiento Contable #}
+            {% if periodo.estatus in "aprobado,pagado,cerrado" %}
+                <form method="post" action="{% url 'contabilidad:generar_asiento_nomina' periodo.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-success">
+                        <i class="bi bi-journal-plus"></i> Generar Asiento
+                    </button>
+                </form>
+            {% endif %}
+			
+			
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════ #}
+{#  KPIs DEL PERIODO                                          #}
+{# ═══════════════════════════════════════════════════════════ #}
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <small class="text-muted text-uppercase">Empleados</small>
+                        <h3 class="mb-0">{{ periodo.empleados_procesados|default:"0" }}</h3>
+                    </div>
+                    <i class="bi bi-people fs-3 text-primary opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <small class="text-muted text-uppercase">Percepciones</small>
+                        <h5 class="mb-0">Bs. {{ periodo.total_percepciones|floatformat:2 }}</h5>
+                    </div>
+                    <i class="bi bi-plus-circle fs-3 text-success opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <small class="text-muted text-uppercase">Deducciones</small>
+                        <h5 class="mb-0 text-danger">Bs. {{ periodo.total_deducciones|floatformat:2 }}</h5>
+                    </div>
+                    <i class="bi bi-dash-circle fs-3 text-danger opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <div class="card h-100 border-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <small class="text-muted text-uppercase">Neto pagado</small>
+                        <h5 class="mb-0 text-success">Bs. {{ periodo.total_neto|floatformat:2 }}</h5>
+                    </div>
+                    <i class="bi bi-cash-coin fs-3 text-success opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted small">Aportes patronales</span>
+                    <strong>Bs. {{ periodo.total_aportes_patronales|floatformat:2 }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted small">Costo total empresa</span>
+                    <strong class="text-primary">Bs. {{ periodo.total_costo_empresa|floatformat:2 }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════ #}
+{#  ARCHIVOS DE PAGO POR BANCO                                #}
+{# ═══════════════════════════════════════════════════════════ #}
+
+{% if puede_gestionar and periodo.estatus in "aprobado,pagado,cerrado" %}
+<div class="card mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="bi bi-bank text-primary"></i>
+            Archivos de pago por banco
+        </h6>
+        <small class="text-muted">
+            Descarga el archivo TXT que cada banco exige para procesar la nómina
+        </small>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 100px;">Código</th>
+                        <th>Banco</th>
+                        <th class="text-center">Empleados</th>
+                        <th class="text-end">Total a pagar</th>
+                        <th style="width: 160px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="bancos-tbody">
+                    <tr>
+                        <td colspan="5" class="text-muted text-center py-4">
+                            <div class="spinner-border spinner-border-sm text-primary"></div>
+                            Cargando bancos…
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    "use strict";
+
+    const API_URL = "{% url 'rrhh:nomina_periodo_bancos_api' periodo.pk %}";
+    const BASE_TXT_URL = "/rrhh/nomina/{{ periodo.pk }}/generar-txt/";
+
+    fetch(API_URL, {
+        credentials: "same-origin",
+        headers: { "Accept": "application/json" },
+    })
+    .then((r) => r.json())
+    .then((data) => {
+        const tbody = document.getElementById("bancos-tbody");
+        tbody.innerHTML = "";
+
+        if (!data.bancos || data.bancos.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-muted text-center py-4">
+                        <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                        No hay empleados con banco asignado en este periodo.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        const fmt = new Intl.NumberFormat("es-VE", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+
+        data.bancos.forEach((b) => {
+            const tr = document.createElement("tr");
+
+            const boton = b.generador_disponible
+                ? `<a href="${BASE_TXT_URL}${b.codigo}/"
+                      class="btn btn-sm btn-outline-primary"
+                      title="Descargar archivo TXT">
+                       <i class="bi bi-download"></i> Descargar
+                   </a>`
+                : `<span class="badge bg-secondary" 
+                        title="Aún no hay generador implementado para este banco">
+                       Sin generador
+                   </span>`;
+
+            tr.innerHTML = `
+                <td><code>${b.codigo}</code></td>
+                <td>${b.nombre}</td>
+                <td class="text-center">
+                    <span class="badge bg-primary">${b.cantidad}</span>
+                </td>
+                <td class="text-end fw-semibold text-success">
+                    Bs. ${fmt.format(b.total)}
+                </td>
+                <td class="text-end">${boton}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Advertencia si hay empleados sin banco
+        if (data.sin_banco > 0) {
+            const warningTr = document.createElement("tr");
+            warningTr.innerHTML = `
+                <td colspan="5" class="text-warning small text-center py-2 bg-warning bg-opacity-10">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    ${data.sin_banco} empleado(s) sin banco asignado (no aparecen en ningún archivo).
+                </td>
+            `;
+            tbody.appendChild(warningTr);
+        }
+    })
+    .catch((err) => {
+        console.error(err);
+        document.getElementById("bancos-tbody").innerHTML = `
+            <tr>
+                <td colspan="5" class="text-danger text-center py-4">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Error al cargar la lista de bancos.
+                </td>
+            </tr>
+        `;
+    });
+})();
+</script>
+{% endif %}
+
+{# ═══════════════════════════════════════════════════════════ #}
+{#  TABLA DE NÓMINAS POR EMPLEADO                             #}
+{# ═══════════════════════════════════════════════════════════ #}
+
+<div class="card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="bi bi-list-ul text-secondary"></i>
+            Nóminas por empleado ({{ total_nominas }})
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        {% if nominas %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Empleado</th>
+                            <th>Cargo</th>
+                            <th>Depto.</th>
+                            <th class="text-center">Días</th>
+                            <th class="text-end">Percepciones</th>
+                            <th class="text-end">Deducciones</th>
+                            <th class="text-end">Neto</th>
+                            <th class="text-center">Estatus</th>
+                            <th style="width: 110px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for n in nominas %}
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold small">{{ n.empleado.nombre_completo }}</div>
+                                    <div class="text-muted" style="font-size: 11px;">
+                                        {{ n.empleado.numero_empleado }} · {{ n.empleado.cedula_completa }}
+                                    </div>
+                                </td>
+                                <td class="small">{{ n.empleado.cargo.nombre|default:"—" }}</td>
+                                <td class="small text-muted">{{ n.empleado.departamento.nombre|default:"—" }}</td>
+                                <td class="text-center small">
+                                    {{ n.dias_trabajados }}/{{ n.dias_periodo }}
+                                    {% if n.dias_faltas %}
+                                        <br><span class="text-danger">{{ n.dias_faltas }} falta(s)</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end small">Bs. {{ n.total_percepciones|floatformat:2 }}</td>
+                                <td class="text-end small text-danger">Bs. {{ n.total_deducciones|floatformat:2 }}</td>
+                                <td class="text-end fw-semibold text-success">Bs. {{ n.neto_pagar|floatformat:2 }}</td>
+                                <td class="text-center">
+                                    {% if n.estatus == "calculado" %}
+                                        <span class="badge bg-warning text-dark">Calc.</span>
+                                    {% elif n.estatus == "revisado" %}
+                                        <span class="badge bg-primary">Rev.</span>
+                                    {% elif n.estatus == "pagado" %}
+                                        <span class="badge bg-success">Pagado</span>
+                                    {% elif n.estatus == "con_error" %}
+                                        <span class="badge bg-danger">Error</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="/api/v1/nomina/nominas/{{ n.id }}/recibo/"
+                                       target="_blank" rel="noopener"
+                                       class="btn btn-sm btn-outline-danger"
+                                       title="Ver recibo PDF">
+                                        <i class="bi bi-file-earmark-pdf"></i> PDF
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center text-muted py-5">
+                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                <p class="mb-0">
+                    {% if periodo.estatus == "abierto" %}
+                        Este periodo aún no ha sido calculado.
+                    {% else %}
+                        No hay nóminas registradas para este periodo.
+                    {% endif %}
+                </p>
+                {% if puede_calcular %}
+                    <button type="button" class="btn btn-sm btn-primary mt-2"
+                            data-bs-toggle="modal" data-bs-target="#modal-calcular">
+                        <i class="bi bi-calculator"></i> Calcular ahora
+                    </button>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════ #}
+{#  MODALES DE CONFIRMACIÓN                                   #}
+{# ═══════════════════════════════════════════════════════════ #}
+
+{% if puede_gestionar %}
+
+    {# Modal Calcular #}
+    {% if puede_calcular %}
+    <div class="modal fade" id="modal-calcular" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-calculator"></i>
+                        {% if periodo.estatus == "calculado" %}Recalcular{% else %}Calcular{% endif %} periodo
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">
+                        Vas a {% if periodo.estatus == "calculado" %}recalcular{% else %}calcular{% endif %}
+                        la nómina del periodo
+                        <strong>{{ periodo.get_tipo_display }} #{{ periodo.numero_periodo }} ({{ periodo.anio }})</strong>.
+                    </p>
+
+                    {% if periodo.estatus == "calculado" %}
+                        <div class="alert alert-warning small mb-3">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            Ya existe un cálculo previo. Se <strong>sobrescribirán</strong>
+                            las nóminas y detalles actuales.
+                        </div>
+                    {% endif %}
+
+                    <p class="text-muted small mb-0">
+                        Se procesarán <strong>los empleados activos</strong> de la empresa
+                        y se aplicarán las incidencias aprobadas.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <form method="post" action="{% url 'rrhh:nomina_periodo_calcular' periodo.pk %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check2"></i>
+                            Sí, {% if periodo.estatus == "calculado" %}recalcular{% else %}calcular{% endif %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Modal Aprobar #}
+    {% if puede_aprobar %}
+    <div class="modal fade" id="modal-aprobar" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title">
+                        <i class="bi bi-check-circle"></i> Aprobar periodo
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>
+                        Vas a <strong>aprobar</strong> el periodo
+                        <strong>{{ periodo.get_tipo_display }} #{{ periodo.numero_periodo }} ({{ periodo.anio }})</strong>.
+                    </p>
+                    <p class="text-muted small mb-0">
+                        Después de aprobar, ya no podrás recalcular. Si necesitas corregir algo,
+                        deberás crear un ajuste manual.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <form method="post" action="{% url 'rrhh:nomina_periodo_aprobar' periodo.pk %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-check2-circle"></i> Sí, aprobar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Modal Cerrar #}
+    {% if puede_cerrar %}
+    <div class="modal fade" id="modal-cerrar" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-secondary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-lock"></i> Cerrar periodo
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>
+                        Vas a <strong>cerrar</strong> el periodo
+                        <strong>{{ periodo.get_tipo_display }} #{{ periodo.numero_periodo }} ({{ periodo.anio }})</strong>.
+                    </p>
+                    <div class="alert alert-danger small mb-3">
+                        <i class="bi bi-exclamation-octagon"></i>
+                        <strong>Acción irreversible.</strong> Después de cerrar, el periodo
+                        no se puede recalcular ni modificar.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <form method="post" action="{% url 'rrhh:nomina_periodo_cerrar' periodo.pk %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-secondary">
+                            <i class="bi bi-lock-fill"></i> Sí, cerrar periodo
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+{% endif %}
+
+{% endblock %}

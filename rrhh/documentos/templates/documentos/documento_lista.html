@@ -1,0 +1,159 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Documentos emitidos - RRHH{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h1 class="mb-1">
+            <i class="bi bi-file-earmark-check text-primary"></i>
+            Documentos emitidos
+        </h1>
+        <p class="text-muted mb-0 small">{{ total }} documento(s)</p>
+    </div>
+</div>
+
+<!-- KPIs -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Total</h6>
+                <h3 class="mb-0">{{ total }}</h3>
+                <small class="text-muted">Documentos emitidos</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-primary">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Constancias</h6>
+                <h3 class="mb-0 text-primary">{{ total_constancias }}</h3>
+                <small class="text-muted">Constancias de trabajo</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-success">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Planillas ARC</h6>
+                <h3 class="mb-0 text-success">{{ total_arc }}</h3>
+                <small class="text-muted">Comprobantes fiscales</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">Tipo</label>
+                <select name="tipo" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for codigo, nombre in tipos %}
+                    <option value="{{ codigo }}" {% if filtros.tipo == codigo %}selected{% endif %}>
+                        {{ nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">Año</label>
+                <input type="text" name="anio" class="form-control form-control-sm"
+                       value="{{ filtros.anio }}" placeholder="Ej: 2026">
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+                <a href="{% url 'rrhh:documento_lista' %}" class="btn btn-sm btn-outline-secondary">
+                    Limpiar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Listado -->
+<div class="card">
+    <div class="card-body p-0">
+        {% if page_obj %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nº Control</th>
+                        <th>Tipo</th>
+                        <th>Empleado</th>
+                        <th>Año</th>
+                        <th>Emitido</th>
+                        <th>Por</th>
+                        <th class="text-center">Descargas</th>
+                        <th style="width: 100px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doc in page_obj %}
+                    <tr>
+                        <td class="fw-semibold small">{{ doc.numero_control }}</td>
+                        <td class="small">
+                            {% if doc.tipo == "constancia_trabajo" %}
+                            <span class="badge bg-primary">{{ doc.get_tipo_display }}</span>
+                            {% else %}
+                            <span class="badge bg-success">{{ doc.get_tipo_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="small">
+                            <div class="fw-semibold">{{ doc.empleado.nombre_completo }}</div>
+                            <div class="text-muted" style="font-size: 11px;">
+                                {{ doc.empleado.numero_empleado }}
+                            </div>
+                        </td>
+                        <td class="small">{{ doc.anio }}</td>
+                        <td class="small text-muted">{{ doc.emitido_at|date:"d/m/Y H:i" }}</td>
+                        <td class="small text-muted">
+                            {{ doc.emitido_por.get_full_name|default:doc.emitido_por.username|default:"—" }}
+                        </td>
+                        <td class="text-center small">{{ doc.descargas }}</td>
+                        <td class="text-end">
+                            <a href="{% url 'rrhh:documento_descargar' doc.id %}"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-download"></i> PDF
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            <p class="mb-0">No hay documentos emitidos</p>
+        </div>
+        {% endif %}
+    </div>
+    {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-white">
+        <nav>
+            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">«</a>
+                </li>
+                {% endif %}
+                <li class="page-item active">
+                    <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+                </li>
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">»</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

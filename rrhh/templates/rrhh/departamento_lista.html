@@ -1,0 +1,222 @@
+{% extends "rrhh/base.html" %}
+
+{% block title %}Departamentos - RRHH System{% endblock %}
+
+{% block content %}
+
+<!-- ═══════════════════════════════════════════════════════════
+     ENCABEZADO
+     ═══════════════════════════════════════════════════════════ -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="mb-1">Departamentos</h1>
+        <p class="text-muted mb-0 small">
+            Total: {{ departamentos|length }} departamento{{ departamentos|length|pluralize:"s" }}
+        </p>
+    </div>
+
+    {% if user.perfil.es_rrhh %}
+        <a href="{% url 'rrhh:departamento_crear' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Nuevo departamento
+        </a>
+    {% endif %}
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     FILTROS Y BÚSQUEDA
+     ═══════════════════════════════════════════════════════════ -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-6">
+                <label for="q" class="form-label small text-muted mb-1">Buscar</label>
+                <input type="text"
+                       name="q"
+                       id="q"
+                       value="{{ query }}"
+                       class="form-control"
+                       placeholder="Código o nombre del departamento...">
+            </div>
+
+            <div class="col-md-3">
+                <label for="activo" class="form-label small text-muted mb-1">Estado</label>
+                <select name="activo" id="activo" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="1" {% if activo == "1" %}selected{% endif %}>Activos</option>
+                    <option value="0" {% if activo == "0" %}selected{% endif %}>Inactivos</option>
+                </select>
+            </div>
+
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-fill">
+                    <i class="bi bi-search"></i> Buscar
+                </button>
+                {% if query or activo %}
+                    <a href="{% url 'rrhh:departamento_lista' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TABLA
+     ═══════════════════════════════════════════════════════════ -->
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 120px;">Código</th>
+                    <th>Nombre</th>
+                    <th class="text-end">Presupuesto anual</th>
+                    <th class="text-center">Estado</th>
+                    <th class="text-end" style="width: 220px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for dep in departamentos %}
+                    <tr>
+                        <td>
+                            <span class="badge bg-primary-subtle text-primary font-monospace">
+                                {{ dep.codigo }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="depto-icon">
+                                    <i class="bi bi-building"></i>
+                                </div>
+                                <div>
+                                    <a href="{% url 'rrhh:departamento_detalle' dep.pk %}"
+									   class="text-decoration-none fw-medium">
+										{{ dep.nombre }}
+									</a>
+                                    {% if dep.descripcion %}
+                                        <div class="text-muted small">
+                                            {{ dep.descripcion|truncatechars:60 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="text-end font-monospace">
+                            Bs. {{ dep.presupuesto_anual|floatformat:2 }}
+                        </td>
+
+                        <td class="text-center">
+                            {% if dep.activo %}
+                                <span class="badge bg-success">Activo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactivo</span>
+                            {% endif %}
+                        </td>
+
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm" role="group">
+							    <a href="{% url 'rrhh:departamento_detalle' dep.pk %}"
+								   class="btn btn-outline-primary"
+								   title="Ver detalle">
+									<i class="bi bi-eye"></i>
+								</a>
+                                {% if user.perfil.es_rrhh %}
+                                    <a href="{% url 'rrhh:departamento_editar' dep.pk %}"
+                                       class="btn btn-outline-secondary"
+                                       title="Editar">
+                                        <i class="bi bi-pencil"></i> Editar
+                                    </a>
+                                {% endif %}
+
+                                {% if user.perfil.es_admin %}
+                                    <a href="{% url 'rrhh:departamento_eliminar' dep.pk %}"
+                                       class="btn btn-outline-danger"
+                                       title="Eliminar">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div class="text-muted">
+                                <div style="font-size: 3rem;">🏢</div>
+                                <h5 class="mt-3 mb-1">No hay departamentos registrados</h5>
+                                {% if query or activo %}
+                                    <p class="mb-3 small">
+                                        No se encontraron resultados con los filtros aplicados.
+                                    </p>
+                                    <a href="{% url 'rrhh:departamento_lista' %}"
+                                       class="btn btn-outline-secondary btn-sm">
+                                        Limpiar filtros
+                                    </a>
+                                {% else %}
+                                    <p class="mb-3 small">
+                                        Comienza creando el primer departamento de la empresa.
+                                    </p>
+                                    {% if user.perfil.es_rrhh %}
+                                        <a href="{% url 'rrhh:departamento_crear' %}"
+                                           class="btn btn-primary btn-sm">
+                                            <i class="bi bi-plus-lg"></i> Nuevo departamento
+                                        </a>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if departamentos %}
+        <div class="card-footer bg-white border-top">
+            <div class="d-flex justify-content-between align-items-center small text-muted">
+                <span>
+                    Mostrando {{ departamentos|length }} departamento{{ departamentos|length|pluralize:"s" }}
+                </span>
+                <span>
+                    Última actualización: {% now "d/m/Y H:i" %}
+                </span>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ESTILOS
+     ═══════════════════════════════════════════════════════════ -->
+<style>
+    .depto-icon {
+        display: inline-flex;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        color: #1e40af;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+
+    .bg-primary-subtle {
+        background-color: #dbeafe !important;
+    }
+
+    .table > tbody > tr > td {
+        vertical-align: middle;
+    }
+
+    .btn-group-sm .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+    }
+</style>
+
+{% endblock %}

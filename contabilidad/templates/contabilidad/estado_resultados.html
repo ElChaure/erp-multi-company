@@ -1,0 +1,126 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Estado de Resultados - Contabilidad{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="mb-1"><i class="bi bi-graph-up text-primary"></i> Estado de Resultados</h1>
+        <p class="text-muted mb-0 small">{{ empresa.razon_social }} · {{ filtros.anio }}</p>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label small">Año</label>
+                <input type="number" name="anio" class="form-control form-control-sm" value="{{ filtros.anio }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Mes desde</label>
+                <input type="number" name="mes_desde" class="form-control form-control-sm" value="{{ filtros.mes_desde }}" min="1" max="12">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Mes hasta</label>
+                <input type="number" name="mes_hasta" class="form-control form-control-sm" value="{{ filtros.mes_hasta }}" min="1" max="12">
+            </div>
+            <div class="col-md-6">
+                <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-search"></i> Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card border-success h-100"><div class="card-body">
+        <h6 class="text-muted small text-uppercase">Ingresos</h6>
+        <h3 class="mb-0 text-success">Bs. {{ total_ingresos|floatformat:2 }}</h3>
+    </div></div></div>
+    <div class="col-md-3"><div class="card border-warning h-100"><div class="card-body">
+        <h6 class="text-muted small text-uppercase">Costos</h6>
+        <h3 class="mb-0 text-warning">Bs. {{ total_costos|floatformat:2 }}</h3>
+    </div></div></div>
+    <div class="col-md-3"><div class="card border-danger h-100"><div class="card-body">
+        <h6 class="text-muted small text-uppercase">Gastos</h6>
+        <h3 class="mb-0 text-danger">Bs. {{ total_gastos|floatformat:2 }}</h3>
+    </div></div></div>
+    <div class="col-md-3"><div class="card border-primary h-100"><div class="card-body">
+        <h6 class="text-muted small text-uppercase">Utilidad Neta</h6>
+        <h3 class="mb-0 {% if utilidad_neta >= 0 %}text-primary{% else %}text-danger{% endif %}">
+            Bs. {{ utilidad_neta|floatformat:2 }}
+        </h3>
+    </div></div></div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <!-- INGRESOS -->
+        <h6 class="text-uppercase text-success border-bottom pb-2">1. Ingresos Operativos</h6>
+        {% if ingresos %}
+        <table class="table table-sm table-borderless mb-0">
+            {% for i in ingresos %}
+            <tr>
+                <td class="small">{{ i.codigo }} - {{ i.nombre }}</td>
+                <td class="text-end small">Bs. {{ i.monto|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="table-light fw-bold">
+                <td>Total Ingresos</td>
+                <td class="text-end text-success">Bs. {{ total_ingresos|floatformat:2 }}</td>
+            </tr>
+        </table>
+        {% else %}
+        <p class="text-muted small">No hay ingresos en el período.</p>
+        {% endif %}
+
+        <!-- COSTOS -->
+        <h6 class="text-uppercase text-warning border-bottom pb-2 mt-4">2. Costos de Producción</h6>
+        {% if costos %}
+        <table class="table table-sm table-borderless mb-0">
+            {% for c in costos %}
+            <tr>
+                <td class="small">{{ c.codigo }} - {{ c.nombre }}</td>
+                <td class="text-end small">Bs. {{ c.monto|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="table-light fw-bold">
+                <td>Total Costos</td>
+                <td class="text-end text-warning">Bs. {{ total_costos|floatformat:2 }}</td>
+            </tr>
+        </table>
+        {% else %}
+        <p class="text-muted small">No hay costos en el período.</p>
+        {% endif %}
+
+        <div class="alert alert-info mt-3 mb-0">
+            <strong>Utilidad Bruta:</strong> Bs. {{ utilidad_bruta|floatformat:2 }}
+        </div>
+
+        <!-- GASTOS -->
+        <h6 class="text-uppercase text-danger border-bottom pb-2 mt-4">3. Gastos Operativos</h6>
+        {% if gastos %}
+        <table class="table table-sm table-borderless mb-0">
+            {% for g in gastos %}
+            <tr>
+                <td class="small">{{ g.codigo }} - {{ g.nombre }}</td>
+                <td class="text-end small">Bs. {{ g.monto|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="table-light fw-bold">
+                <td>Total Gastos</td>
+                <td class="text-end text-danger">Bs. {{ total_gastos|floatformat:2 }}</td>
+            </tr>
+        </table>
+        {% else %}
+        <p class="text-muted small">No hay gastos en el período.</p>
+        {% endif %}
+
+        <!-- UTILIDAD NETA -->
+        <div class="alert {% if utilidad_neta >= 0 %}alert-success{% else %}alert-danger{% endif %} mt-4 mb-0 fs-5">
+            <strong>Utilidad Neta del Período:</strong> Bs. {{ utilidad_neta|floatformat:2 }}
+            {% if utilidad_neta >= 0 %}<i class="bi bi-arrow-up-circle"></i>{% else %}<i class="bi bi-arrow-down-circle"></i>{% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

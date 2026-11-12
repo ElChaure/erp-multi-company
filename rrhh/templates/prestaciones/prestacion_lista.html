@@ -1,0 +1,360 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Prestaciones Sociales - RRHH{% endblock %}
+
+{% block content %}
+{# ═══════════════════════════════════════════════════ #}
+{# HEADER                                            #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h1 class="mb-1">
+            <i class="bi bi-piggy-bank text-success"></i>
+            Prestaciones Sociales
+        </h1>
+        <p class="text-muted mb-0 small">
+            Art. 142 LOTTT · Garantía + Retroactivo · {{ total }} empleado(s) encontrado(s)
+        </p>
+    </div>
+    <div class="text-end">
+        <small class="text-muted d-block">Período de cálculo</small>
+        <small class="text-muted fw-semibold">
+            {% now "d/m/Y" %}
+        </small>
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════ #}
+{# KPIs                                              #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="row g-3 mb-4">
+    {# Card 1: Total acumulado #}
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 border-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="text-muted text-uppercase small mb-2">Total acumulado</h6>
+                        <h3 class="mb-0 text-success">
+                            Bs. {{ kpis.total_saldo_ves|floatformat:2 }}
+                        </h3>
+                        {% if kpis.total_saldo_usd > 0 %}
+                        <small class="text-muted">
+                            ≈ USD {{ kpis.total_saldo_usd|floatformat:2 }}
+                        </small>
+                        {% endif %}
+                    </div>
+                    <div class="bg-success bg-opacity-10 text-success rounded-3 p-3">
+                        <i class="bi bi-cash-stack fs-4"></i>
+                    </div>
+                </div>
+                <small class="text-muted">
+                    {{ kpis.total_prestaciones }} prestación(es) registrada(s)
+                </small>
+            </div>
+        </div>
+    </div>
+
+    {# Card 2: Promedio #}
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="text-muted text-uppercase small mb-2">Promedio por empleado</h6>
+                        <h3 class="mb-0 text-primary">
+                            Bs. {{ kpis.promedio_ves|floatformat:2 }}
+                        </h3>
+                    </div>
+                    <div class="bg-primary bg-opacity-10 text-primary rounded-3 p-3">
+                        <i class="bi bi-graph-up fs-4"></i>
+                    </div>
+                </div>
+                <small class="text-muted">Base para proyecciones</small>
+            </div>
+        </div>
+    </div>
+
+    {# Card 3: Activas vs liquidadas #}
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="text-muted text-uppercase small mb-2">Estatus</h6>
+                        <h3 class="mb-0">
+                            <span class="text-success">{{ kpis.activas }}</span>
+                            <small class="text-muted fs-6">activas</small>
+                        </h3>
+                    </div>
+                    <div class="bg-info bg-opacity-10 text-info rounded-3 p-3">
+                        <i class="bi bi-pie-chart fs-4"></i>
+                    </div>
+                </div>
+                <small class="text-muted">
+                    {{ kpis.liquidadas }} liquidada(s)
+                </small>
+            </div>
+        </div>
+    </div>
+
+    {# Card 4: Sin prestación (alerta) #}
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 {% if kpis.sin_prestacion > 0 %}border-warning{% endif %}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="text-muted text-uppercase small mb-2">Sin calcular</h6>
+                        <h3 class="mb-0 {% if kpis.sin_prestacion > 0 %}text-warning{% else %}text-success{% endif %}">
+                            {{ kpis.sin_prestacion }}
+                        </h3>
+                    </div>
+                    <div class="bg-warning bg-opacity-10 text-warning rounded-3 p-3">
+                        <i class="bi bi-exclamation-triangle fs-4"></i>
+                    </div>
+                </div>
+                <small class="text-muted">
+                    {% if kpis.sin_prestacion > 0 %}
+                    Empleados sin prestación creada
+                    {% else %}
+                    Todos tienen prestación creada
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════ #}
+{# TOP 5                                             #}
+{# ═══════════════════════════════════════════════════ #}
+{% if top_5 %}
+<div class="card mb-4">
+    <div class="card-header bg-white">
+        <h6 class="mb-0">
+            <i class="bi bi-trophy text-warning"></i>
+            Top 5 empleados por saldo acumulado
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 40px;">#</th>
+                        <th>Empleado</th>
+                        <th class="text-end">Garantía</th>
+                        <th class="text-end">Intereses</th>
+                        <th class="text-end">Saldo total</th>
+                        <th style="width: 100px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in top_5 %}
+                    <tr>
+                        <td class="text-muted">{{ forloop.counter }}</td>
+                        <td>
+                            <div class="fw-semibold small">{{ p.empleado.nombre_completo }}</div>
+                            <div class="text-muted" style="font-size: 11px;">
+                                {{ p.empleado.numero_empleado }}
+                            </div>
+                        </td>
+                        <td class="text-end small">Bs. {{ p.saldo_garantia_ves|floatformat:2 }}</td>
+                        <td class="text-end small text-info">Bs. {{ p.saldo_intereses_ves|floatformat:2 }}</td>
+                        <td class="text-end fw-bold text-success">Bs. {{ p.saldo_total_ves|floatformat:2 }}</td>
+                        <td class="text-end">
+                            <a href="{% url 'rrhh:prestacion_detalle' p.empleado.id %}"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> Ver
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# ═══════════════════════════════════════════════════ #}
+{# FILTROS                                           #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-12 col-md-4">
+                <label class="form-label small text-muted mb-1">Buscar</label>
+                <input type="text" name="q" class="form-control form-control-sm"
+                       placeholder="Nombre, cédula o Nº empleado…"
+                       value="{{ filtros.q }}">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small text-muted mb-1">Estatus</label>
+                <select name="estatus" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    <option value="activa" {% if filtros.estatus == "activa" %}selected{% endif %}>Activa</option>
+                    <option value="liquidada" {% if filtros.estatus == "liquidada" %}selected{% endif %}>Liquidada</option>
+                    <option value="suspendida" {% if filtros.estatus == "suspendida" %}selected{% endif %}>Suspendida</option>
+                    <option value="sin_prestacion" {% if filtros.estatus == "sin_prestacion" %}selected{% endif %}>Sin prestación</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small text-muted mb-1">Antigüedad mín.</label>
+                <select name="antiguedad_min" class="form-select form-select-sm">
+                    <option value="">Cualquiera</option>
+                    <option value="1" {% if filtros.antiguedad_min == "1" %}selected{% endif %}>1 año</option>
+                    <option value="3" {% if filtros.antiguedad_min == "3" %}selected{% endif %}>3 años</option>
+                    <option value="5" {% if filtros.antiguedad_min == "5" %}selected{% endif %}>5 años</option>
+                    <option value="10" {% if filtros.antiguedad_min == "10" %}selected{% endif %}>10 años</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-auto d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+                <a href="{% url 'rrhh:prestacion_lista' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Limpiar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════ #}
+{# LISTADO                                           #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="card">
+    <div class="card-body p-0">
+        {% if page_obj %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Empleado</th>
+                        <th>Cargo</th>
+                        <th class="text-center">Antigüedad</th>
+                        <th class="text-end">Garantía</th>
+                        <th class="text-end">Retroactivo</th>
+                        <th class="text-center">Método</th>
+                        <th class="text-end">Saldo total</th>
+                        <th class="text-center">Estatus</th>
+                        <th style="width: 100px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in page_obj %}
+                    <tr>
+                        <td>
+                            <div class="fw-semibold small">{{ emp.nombre_completo }}</div>
+                            <div class="text-muted" style="font-size: 11px;">
+                                {{ emp.numero_empleado }} · {{ emp.cedula_completa }}
+                            </div>
+                        </td>
+                        <td class="small">{{ emp.cargo.nombre|default:"—" }}</td>
+                        <td class="text-center small text-muted">
+                            {% if emp.prestacion_social %}
+                            {{ emp.prestacion_social.anios_servicio }} año(s)
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td class="text-end small">
+                            {% if emp.prestacion_social %}
+                            Bs. {{ emp.prestacion_social.saldo_garantia_ves|floatformat:2 }}
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end small">
+                            {% if emp.prestacion_social.ultimo_retroactivo %}
+                            Bs. {{ emp.prestacion_social.ultimo_retroactivo|floatformat:2 }}
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if emp.prestacion_social.ultimo_metodo_aplicado == "garantia" %}
+                            <span class="badge bg-success">Garantía</span>
+                            {% elif emp.prestacion_social.ultimo_metodo_aplicado == "retroactivo" %}
+                            <span class="badge bg-warning text-dark">Retroactivo</span>
+                            {% else %}
+                            <span class="badge bg-secondary">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end fw-bold text-success">
+                            {% if emp.prestacion_social %}
+                            Bs. {{ emp.prestacion_social.saldo_total_ves|floatformat:2 }}
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if emp.prestacion_social %}
+                                {% if emp.prestacion_social.estatus == "activa" %}
+                                <span class="badge bg-success">Activa</span>
+                                {% elif emp.prestacion_social.estatus == "liquidada" %}
+                                <span class="badge bg-secondary">Liquidada</span>
+                                {% elif emp.prestacion_social.estatus == "suspendida" %}
+                                <span class="badge bg-warning text-dark">Suspendida</span>
+                                {% endif %}
+                            {% else %}
+                            <span class="badge bg-light text-dark">Sin prestación</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'rrhh:prestacion_detalle' emp.id %}"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> Ver
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            <p class="mb-0">No hay empleados que coincidan con los filtros</p>
+            <small>Ajusta los filtros o limpia la búsqueda</small>
+        </div>
+        {% endif %}
+    </div>
+
+    {# Paginación #}
+    {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-white">
+        <nav>
+            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}">«</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">«</span></li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}">»</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">»</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

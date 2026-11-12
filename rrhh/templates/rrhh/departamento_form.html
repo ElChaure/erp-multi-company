@@ -1,0 +1,251 @@
+{% extends "rrhh/base.html" %}
+
+{% block title %}{{ accion }} departamento - RRHH System{% endblock %}
+
+{% block content %}
+
+<!-- ═══════════════════════════════════════════════════════════
+     ENCABEZADO
+     ═══════════════════════════════════════════════════════════ -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="mb-1">{{ accion }} departamento</h1>
+        <p class="text-muted mb-0 small">
+            {% if accion == "Editar" %}
+                Modifica los datos del departamento <strong>{{ departamento.nombre }}</strong>
+            {% else %}
+                Completa los datos para registrar un nuevo departamento
+            {% endif %}
+        </p>
+    </div>
+    <a href="{% url 'rrhh:departamento_lista' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ERRORES GENERALES
+     ═══════════════════════════════════════════════════════════ -->
+{% if form.non_field_errors %}
+    <div class="alert alert-danger">
+        <strong>Errores en el formulario:</strong>
+        <ul class="mb-0 mt-2">
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════
+     FORMULARIO
+     ═══════════════════════════════════════════════════════════ -->
+<form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="row g-4">
+
+        <!-- ─── Columna izquierda: campos ─── -->
+        <div class="col-lg-8">
+
+            <!-- Sección: Identificación -->
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-tag text-primary"></i> Identificación
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+
+                        <div class="col-md-4">
+                            <label for="{{ form.codigo.id_for_label }}" class="form-label">
+                                {{ form.codigo.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.codigo }}
+                            <small class="text-muted d-block mt-1">
+                                Código corto, sin espacios (ej: TI, RH, VTA).
+                            </small>
+                            {% for error in form.codigo.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="bi bi-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-8">
+                            <label for="{{ form.nombre.id_for_label }}" class="form-label">
+                                {{ form.nombre.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.nombre }}
+                            {% for error in form.nombre.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="bi bi-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección: Presupuesto -->
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-cash-stack text-primary"></i> Presupuesto
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <label for="{{ form.presupuesto_anual.id_for_label }}" class="form-label">
+                                {{ form.presupuesto_anual.label }}
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">Bs.</span>
+                                {{ form.presupuesto_anual }}
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                Presupuesto asignado para el año fiscal actual.
+                            </small>
+                            {% for error in form.presupuesto_anual.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="bi bi-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección: Estado -->
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-toggle-on text-primary"></i> Estado
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-switch">
+                        {{ form.activo }}
+                        <label class="form-check-label ms-2" for="{{ form.activo.id_for_label }}">
+                            {{ form.activo.label }}
+                        </label>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        Los departamentos inactivos no aparecen en los selectores de asignación.
+                    </small>
+                    {% for error in form.activo.errors %}
+                        <div class="text-danger small mt-1">
+                            <i class="bi bi-exclamation-circle"></i> {{ error }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ─── Columna derecha: resumen y acciones ─── -->
+        <div class="col-lg-4">
+
+            <!-- Resumen -->
+            <div class="card mb-4 bg-light border-0">
+                <div class="card-body">
+                    <h6 class="text-uppercase text-muted small mb-3">
+                        <i class="bi bi-info-circle"></i> Información
+                    </h6>
+
+                    <ul class="list-unstyled mb-0 small">
+                        <li class="mb-2">
+                            <strong>Acción:</strong> {{ accion }}
+                        </li>
+                        {% if departamento %}
+                            <li class="mb-2">
+                                <strong>Departamento:</strong><br>
+                                {{ departamento.nombre }}
+                            </li>
+                            <li class="mb-2">
+                                <strong>Código:</strong>
+                                <span class="font-monospace">{{ departamento.codigo }}</span>
+                            </li>
+                        {% endif %}
+                        <li>
+                            <strong>Campos obligatorios:</strong> marcados con
+                            <span class="text-danger">*</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="card">
+                <div class="card-body">
+                    <button type="submit" class="btn btn-primary w-100 mb-2">
+                        <i class="bi bi-check-lg"></i>
+                        {% if accion == "Editar" %}
+                            Guardar cambios
+                        {% else %}
+                            Crear departamento
+                        {% endif %}
+                    </button>
+
+                    <a href="{% url 'rrhh:departamento_lista' %}"
+                       class="btn btn-outline-secondary w-100">
+                        Cancelar
+                    </a>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</form>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ESTILOS
+     ═══════════════════════════════════════════════════════════ -->
+<style>
+    .form-label {
+        font-weight: 500;
+        font-size: 0.9rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+    }
+
+    .input-group-text {
+        background-color: #f9fafb;
+        border-right: none;
+        font-weight: 500;
+    }
+
+    .input-group .form-control {
+        border-left: none;
+    }
+
+    .card-header {
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .card-header h5 {
+        font-size: 1rem;
+    }
+
+    .form-check-input:checked {
+        background-color: #2563eb;
+        border-color: #2563eb;
+    }
+
+    .form-check-input {
+        width: 2.5rem;
+        height: 1.25rem;
+        cursor: pointer;
+    }
+</style>
+
+{% endblock %}

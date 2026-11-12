@@ -1,0 +1,150 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Vacaciones colectivas - RRHH{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <a href="{% url 'rrhh:vacaciones_lista' %}" class="text-muted small text-decoration-none">
+            <i class="bi bi-arrow-left"></i> Volver a saldos
+        </a>
+        <h1 class="mb-1 mt-1">
+            <i class="bi bi-people text-primary"></i>
+            Vacaciones colectivas
+        </h1>
+        <p class="text-muted mb-0 small">
+            {{ total }} vacación(es) colectiva(s) registrada(s)
+        </p>
+    </div>
+    <a href="{% url 'rrhh:vacaciones_colectiva_nueva' %}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Nueva colectiva
+    </a>
+</div>
+
+{# Filtros #}
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-6 col-md-3">
+                <label class="form-label small text-muted mb-1">Estatus</label>
+                <select name="estatus" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    <option value="borrador" {% if filtros.estatus == "borrador" %}selected{% endif %}>Borrador</option>
+                    <option value="aplicada" {% if filtros.estatus == "aplicada" %}selected{% endif %}>Aplicada</option>
+                    <option value="cancelada" {% if filtros.estatus == "cancelada" %}selected{% endif %}>Cancelada</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small text-muted mb-1">Año</label>
+                <select name="anio" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for a in anios_disponibles %}
+                    <option value="{{ a }}" {% if filtros.anio == a|stringformat:"s" %}selected{% endif %}>
+                        {{ a }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-auto d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+                <a href="{% url 'rrhh:vacaciones_colectivas_lista' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Limpiar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Listado #}
+<div class="card">
+    <div class="card-body p-0">
+        {% if page_obj %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Empresa</th>
+                        <th>Alcance</th>
+                        <th>Fechas</th>
+                        <th class="text-center">Días</th>
+                        <th class="text-center">Solicitudes</th>
+                        <th class="text-center">Estatus</th>
+                        <th style="width: 100px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in page_obj %}
+                    <tr>
+                        <td class="fw-semibold small">{{ v.nombre }}</td>
+                        <td class="small">{{ v.empresa.razon_social }}</td>
+                        <td class="small">
+                            {{ v.get_alcance_display }}
+                            {% if v.sede %}· {{ v.sede.nombre }}{% endif %}
+                            {% if v.departamento %}· {{ v.departamento.nombre }}{% endif %}
+                        </td>
+                        <td class="small">
+                            {{ v.fecha_inicio|date:"d/m/Y" }}
+                            → 
+                            {{ v.fecha_fin|date:"d/m/Y" }}
+                        </td>
+                        <td class="text-center">{{ v.dias_habiles }}</td>
+                        <td class="text-center">
+                            <span class="badge bg-primary">{{ v.num_solicitudes }}</span>
+                        </td>
+                        <td class="text-center">
+                            {% if v.estatus == "borrador" %}
+                            <span class="badge bg-warning text-dark">Borrador</span>
+                            {% elif v.estatus == "aplicada" %}
+                            <span class="badge bg-success">Aplicada</span>
+                            {% elif v.estatus == "cancelada" %}
+                            <span class="badge bg-secondary">Cancelada</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'rrhh:vacaciones_colectiva_detalle' v.id %}"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> Ver
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            <p class="mb-0">No hay vacaciones colectivas registradas</p>
+            <a href="{% url 'rrhh:vacaciones_colectiva_nueva' %}" class="btn btn-sm btn-primary mt-3">
+                <i class="bi bi-plus-lg"></i> Crear la primera
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-white">
+        <nav>
+            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}">«</a>
+                </li>
+                {% endif %}
+                <li class="page-item active">
+                    <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+                </li>
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}">»</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

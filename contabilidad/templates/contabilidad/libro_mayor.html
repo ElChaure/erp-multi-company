@@ -1,0 +1,127 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Libro Mayor - Contabilidad{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="mb-1"><i class="bi bi-list-columns text-primary"></i> Libro Mayor</h1>
+        <p class="text-muted mb-0 small">{{ empresa.razon_social }}</p>
+    </div>
+    <a href="{% url 'contabilidad:libro_diario' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-book"></i> Libro Diario
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label small">Cuenta *</label>
+                <select name="cuenta" class="form-select form-select-sm" required>
+                    <option value="">— Seleccione una cuenta —</option>
+                    {% for c in cuentas %}
+                    <option value="{{ c.id }}" {% if filtros.cuenta == c.id|stringformat:"s" %}selected{% endif %}>
+                        {{ c.codigo }} - {{ c.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Año</label>
+                <input type="number" name="anio" class="form-control form-control-sm" value="{{ filtros.anio }}" placeholder="2026">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Mes</label>
+                <input type="number" name="mes" class="form-control form-control-sm" value="{{ filtros.mes }}" placeholder="Todos">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-search"></i> Consultar</button>
+                <a href="{% url 'contabilidad:libro_mayor' %}" class="btn btn-sm btn-outline-secondary">Limpiar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if cuenta %}
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card"><div class="card-body">
+        <h6 class="text-muted small text-uppercase">Saldo Inicial</h6>
+        <h4 class="mb-0">Bs. {{ saldo_inicial|floatformat:2 }}</h4>
+    </div></div></div>
+    <div class="col-md-3"><div class="card border-primary"><div class="card-body">
+        <h6 class="text-muted small text-uppercase">Total Débito</h6>
+        <h4 class="mb-0 text-primary">Bs. {{ total_debito|floatformat:2 }}</h4>
+    </div></div></div>
+    <div class="col-md-3"><div class="card border-info"><div class="card-body">
+        <h6 class="text-muted small text-uppercase">Total Crédito</h6>
+        <h4 class="mb-0 text-info">Bs. {{ total_credito|floatformat:2 }}</h4>
+    </div></div></div>
+    <div class="col-md-3"><div class="card border-success"><div class="card-body">
+        <h6 class="text-muted small text-uppercase">Saldo Final</h6>
+        <h4 class="mb-0 text-success">Bs. {{ saldo_final|floatformat:2 }}</h4>
+    </div></div></div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-white">
+        <h6 class="mb-0">{{ cuenta.codigo }} - {{ cuenta.nombre }} <span class="badge bg-light text-dark">{{ cuenta.get_tipo_display }}</span></h6>
+    </div>
+    <div class="card-body p-0">
+        {% if movimientos %}
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Asiento</th>
+                        <th>Concepto</th>
+                        <th>CC</th>
+                        <th>Descripción</th>
+                        <th class="text-end">Débito</th>
+                        <th class="text-end">Crédito</th>
+                        <th class="text-end">Saldo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="table-light">
+                        <td colspan="7" class="text-end fw-semibold small">Saldo inicial</td>
+                        <td class="text-end fw-semibold small">Bs. {{ saldo_inicial|floatformat:2 }}</td>
+                    </tr>
+                    {% for m in movimientos %}
+                    <tr>
+                        <td class="small">{{ m.fecha|date:"d/m/Y" }}</td>
+                        <td class="small">{{ m.numero }}</td>
+                        <td class="small">{{ m.concepto|truncatechars:40 }}</td>
+                        <td class="small">{{ m.centro }}</td>
+                        <td class="small">{{ m.descripcion }}</td>
+                        <td class="text-end small">{% if m.debito > 0 %}Bs. {{ m.debito|floatformat:2 }}{% endif %}</td>
+                        <td class="text-end small">{% if m.credito > 0 %}Bs. {{ m.credito|floatformat:2 }}{% endif %}</td>
+                        <td class="text-end small fw-semibold">Bs. {{ m.saldo|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light fw-bold">
+                    <tr>
+                        <td colspan="5" class="text-end small">Totales del período</td>
+                        <td class="text-end small">Bs. {{ total_debito|floatformat:2 }}</td>
+                        <td class="text-end small">Bs. {{ total_credito|floatformat:2 }}</td>
+                        <td class="text-end small">Bs. {{ saldo_final|floatformat:2 }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            <p>No hay movimientos para esta cuenta en el período seleccionado.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> Selecciona una cuenta para ver sus movimientos.
+</div>
+{% endif %}
+
+{% endblock %}

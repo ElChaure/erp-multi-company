@@ -1,0 +1,276 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Reparto de CIF — {{ empresa.razon_social }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  {# ═══════════════ ENCABEZADO ═══════════════ #}
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h4 class="mb-0">
+        <i class="bi bi-pie-chart text-primary"></i>
+        Reparto de Costos Indirectos de Fabricación (CIF)
+      </h4>
+      <small class="text-muted">{{ empresa.razon_social }}</small>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      {% if config %}
+        <a href="{% url 'contabilidad:cif_configuracion' %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-gear"></i> Editar configuración
+        </a>
+        <a href="{% url 'contabilidad:cif_reporte_export' %}?monto={{ monto }}"
+           class="btn btn-success btn-sm">
+          <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ═══════════════ FILTRO ═══════════════ #}
+  <div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-auto">
+          <label class="form-label small fw-semibold mb-1">CIF Total a repartir</label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text">Bs.</span>
+            <input type="number"
+                   name="monto"
+                   class="form-control"
+                   step="0.01"
+                   min="0"
+                   value="{{ monto|stringformat:'s' }}"
+                   style="max-width: 180px;">
+          </div>
+        </div>
+        <div class="col-auto">
+          <label class="form-label small fw-semibold mb-1">Período (referencia)</label>
+          <select name="periodo" class="form-select form-select-sm" style="min-width: 180px;">
+            <option value="">— Sin período —</option>
+            {% for p in periodos %}
+              <option value="{{ p.id }}" {% if periodo and periodo.id == p.id %}selected{% endif %}>
+                {{ p.anio }} — Mes {{ p.mes }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="bi bi-calculator"></i> Recalcular
+          </button>
+        </div>
+        {% if config %}
+          <div class="col-auto ms-auto">
+            <span class="badge bg-primary">
+              Driver: {{ driver_label }}
+            </span>
+            <span class="badge bg-warning text-dark">
+              Pivot: {{ config.centro_pivot.codigo|default:"—" }}
+            </span>
+            <span class="badge bg-secondary">
+              Base: {{ config.base_pivot|floatformat:2|default:"—" }}
+            </span>
+          </div>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+
+  {% if not config %}
+    {# ═══════════════ SIN CONFIGURACIÓN ═══════════════ #}
+    <div class="card shadow-sm">
+      <div class="card-body text-center py-5">
+        <i class="bi bi-gear fs-1 text-muted"></i>
+        <h5 class="mt-3">No hay configuración de reparto de CIF</h5>
+        <p class="text-muted mb-3">
+          Crea una configuración para definir el driver, el centro PIVOT y los coeficientes de cada máquina.
+        </p>
+        <a href="{% url 'contabilidad:cif_configuracion' %}" class="btn btn-primary">
+          <i class="bi bi-plus-circle"></i> Crear configuración CIF
+        </a>
+      </div>
+    </div>
+  {% else %}
+
+    {# ═══════════════ KPIs ═══════════════ #}
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
+        <div class="card shadow-sm h-100 border-start border-4 border-primary">
+          <div class="card-body">
+            <small class="text-muted text-uppercase">CIF Total</small>
+            <h5 class="mb-0 mt-1">Bs. {{ resultado.monto_total_cif|floatformat:2 }}</h5>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card shadow-sm h-100 border-start border-4 border-info">
+          <div class="card-body">
+            <small class="text-muted text-uppercase">Centros configurados</small>
+            <h5 class="mb-0 mt-1">{{ resultado.centros|length }}</h5>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card shadow-sm h-100 border-start border-4 border-warning">
+          <div class="card-body">
+            <small class="text-muted text-uppercase">CIF Asignado</small>
+            <h5 class="mb-0 mt-1">Bs. {{ resultado.total_asignado|floatformat:2 }}</h5>
+            <small class="text-success">
+              <i class="bi bi-check-circle"></i> Cuadra
+            </small>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card shadow-sm h-100 border-start border-4 border-success">
+          <div class="card-body">
+            <small class="text-muted text-uppercase">PIVOT</small>
+            <h5 class="mb-0 mt-1">{{ resultado.centro_pivot.codigo|default:"—" }}</h5>
+            <small class="text-muted">{{ resultado.centro_pivot.nombre|default:"" }}</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+
+      {# ═══════════════ GRÁFICO ═══════════════ #}
+      <div class="col-lg-5">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-white">
+            <strong><i class="bi bi-pie-chart text-primary"></i> Distribución de CIF</strong>
+          </div>
+          <div class="card-body d-flex align-items-center justify-content-center">
+            <canvas id="chart-cif" style="max-height: 380px;"></canvas>
+          </div>
+        </div>
+      </div>
+
+      {# ═══════════════ TABLA ═══════════════ #}
+      <div class="col-lg-7">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <strong><i class="bi bi-table text-primary"></i> Detalle por Centro de Costo</strong>
+            <small class="text-muted">Click en una fila para ver auditoría</small>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+              <table class="table table-sm table-hover mb-0 align-middle">
+                <thead class="table-light sticky-top">
+                  <tr>
+                    <th>Código</th>
+                    <th>Centro de Costo</th>
+                    <th class="text-end">Driver</th>
+                    <th class="text-end">Coef.</th>
+                    <th class="text-end">%</th>
+                    <th class="text-end">CIF Asignado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for c in resultado.centros %}
+                    <tr {% if c.centro_costo == resultado.centro_pivot %}class="table-warning"{% endif %}
+                        onclick="window.location='{% url 'contabilidad:cif_centro_detalle' c.centro_costo.id %}'"
+                        style="cursor: pointer;">
+                      <td>
+                        <span class="fw-semibold">{{ c.centro_costo.codigo }}</span>
+                        {% if c.centro_costo == resultado.centro_pivot %}
+                          <span class="badge bg-warning text-dark ms-1">PIVOT</span>
+                        {% endif %}
+                        {% if c.coeficiente_manual %}
+                          <span class="badge bg-info text-dark ms-1" title="Coeficiente manual">M</span>
+                        {% endif %}
+                      </td>
+                      <td>{{ c.centro_costo.nombre }}</td>
+                      <td class="text-end">{{ c.valor_driver|floatformat:2 }}</td>
+                      <td class="text-end font-monospace">{{ c.coeficiente|floatformat:4 }}</td>
+                      <td class="text-end">{{ c.porcentaje|floatformat:2 }}%</td>
+                      <td class="text-end fw-semibold">{{ c.cif_asignado|floatformat:2 }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                  <tr>
+                    <th colspan="4" class="text-end">TOTAL</th>
+                    <th class="text-end">100.00%</th>
+                    <th class="text-end">{{ resultado.total_asignado|floatformat:2 }}</th>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    {# ═══════════════ LEYENDA ═══════════════ #}
+    <div class="mt-3 small text-muted">
+      <i class="bi bi-info-circle"></i>
+      El coeficiente de cada centro se calcula como
+      <code>{{ driver_label }} del CC / {{ driver_label }} del PIVOT</code>.
+      Los centros con coeficiente manual (badge <span class="badge bg-info text-dark">M</span>)
+      usan el valor definido en la configuración.
+    </div>
+
+  {% endif %}
+
+</div>
+
+{# ═══════════════ CHART.JS ═══════════════ #}
+{% if config and resultado.centros %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const labels = {{ chart_labels|safe }};
+  const data = {{ chart_data|safe }};
+
+  // Paleta de colores generada
+  const colores = [
+    "#2563eb", "#16a34a", "#dc2626", "#ca8a04", "#9333ea",
+    "#0891b2", "#ea580c", "#65a30d", "#db2777", "#7c3aed",
+    "#0284c7", "#059669", "#b91c1c", "#a16207", "#7e22ce",
+    "#0e7490", "#c2410c", "#4d7c0f", "#be185d", "#6d28d9",
+  ];
+
+  new Chart(document.getElementById("chart-cif"), {
+    type: "doughnut",
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: colores.slice(0, labels.length),
+        borderWidth: 1,
+        borderColor: "#fff",
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "right",
+          labels: {
+            boxWidth: 12,
+            font: { size: 10 },
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+              const pct = total > 0 ? (ctx.parsed / total * 100).toFixed(2) : "0.00";
+              return ctx.label + ": Bs. " +
+                ctx.parsed.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+                " (" + pct + "%)";
+            }
+          }
+        }
+      }
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

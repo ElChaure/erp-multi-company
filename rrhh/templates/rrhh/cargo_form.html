@@ -1,0 +1,232 @@
+{% extends "rrhh/base.html" %}
+
+{% block title %}{{ accion }} cargo - RRHH System{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="mb-1">{{ accion }} cargo</h1>
+        <p class="text-muted mb-0 small">
+            {% if accion == "Editar" %}
+                Modifica los datos del cargo <strong>{{ cargo.nombre }}</strong>
+            {% else %}
+                Completa los datos para registrar un nuevo cargo
+            {% endif %}
+        </p>
+    </div>
+    <a href="{% url 'rrhh:cargo_lista' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+{% if form.non_field_errors %}
+    <div class="alert alert-danger">
+        <strong>Errores en el formulario:</strong>
+        <ul class="mb-0 mt-2">
+            {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+    </div>
+{% endif %}
+
+<form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+
+            <!-- Identificación -->
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-tag text-primary"></i> Identificación
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="{{ form.codigo.id_for_label }}" class="form-label">
+                                {{ form.codigo.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.codigo }}
+                            <small class="text-muted d-block mt-1">
+                                Código corto y único. Ej: DEV-SR, GER-VTA
+                            </small>
+                            {% for error in form.codigo.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="bi bi-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-8">
+                            <label for="{{ form.nombre.id_for_label }}" class="form-label">
+                                {{ form.nombre.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.nombre }}
+                            {% for error in form.nombre.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="bi bi-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-12">
+                            <label for="{{ form.descripcion.id_for_label }}" class="form-label">
+                                {{ form.descripcion.label }}
+                            </label>
+                            {{ form.descripcion }}
+                            {% for error in form.descripcion.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rango salarial -->
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-cash-stack text-primary"></i> Rango salarial
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.salario_min.id_for_label }}" class="form-label">
+                                {{ form.salario_min.label }}
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">Bs.</span>
+                                {{ form.salario_min }}
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                Salario mínimo que se puede ofrecer para este cargo.
+                            </small>
+                            {% for error in form.salario_min.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.salario_max.id_for_label }}" class="form-label">
+                                {{ form.salario_max.label }}
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">Bs.</span>
+                                {{ form.salario_max }}
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                Salario máximo. Debe ser mayor o igual al mínimo.
+                            </small>
+                            {% for error in form.salario_max.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estado -->
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-toggle-on text-primary"></i> Estado
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-switch">
+                        {{ form.activo }}
+                        <label class="form-check-label ms-2" for="{{ form.activo.id_for_label }}">
+                            {{ form.activo.label }}
+                        </label>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        Los cargos inactivos no aparecen al asignar empleados.
+                    </small>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Columna derecha -->
+        <div class="col-lg-4">
+
+            <div class="card mb-4 bg-light border-0">
+                <div class="card-body">
+                    <h6 class="text-uppercase text-muted small mb-3">
+                        <i class="bi bi-info-circle"></i> Información
+                    </h6>
+                    <ul class="list-unstyled mb-0 small">
+                        <li class="mb-2">
+                            <strong>Acción:</strong> {{ accion }}
+                        </li>
+                        {% if cargo %}
+                            <li class="mb-2">
+                                <strong>Código:</strong>
+                                <span class="font-monospace">{{ cargo.codigo }}</span>
+                            </li>
+                            <li class="mb-2">
+                                <strong>Empleados:</strong> {{ cargo.empleados.count }}
+                            </li>
+                        {% endif %}
+                        <li>
+                            <strong>Campos obligatorios:</strong> marcados con
+                            <span class="text-danger">*</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <button type="submit" class="btn btn-primary w-100 mb-2">
+                        <i class="bi bi-check-lg"></i>
+                        {% if accion == "Editar" %}Guardar cambios{% else %}Crear cargo{% endif %}
+                    </button>
+                    <a href="{% url 'rrhh:cargo_lista' %}" class="btn btn-outline-secondary w-100">
+                        Cancelar
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</form>
+
+<style>
+    .form-label {
+        font-weight: 500;
+        font-size: 0.9rem;
+        margin-bottom: 0.35rem;
+    }
+    .form-control, .form-select {
+        border-radius: 8px;
+    }
+    .input-group-text {
+        background-color: #f9fafb;
+        border-right: none;
+        font-weight: 500;
+    }
+    .input-group .form-control {
+        border-left: none;
+    }
+    .card-header {
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .card-header h5 {
+        font-size: 1rem;
+    }
+    .form-check-input:checked {
+        background-color: #2563eb;
+        border-color: #2563eb;
+    }
+    .form-check-input {
+        width: 2.5rem;
+        height: 1.25rem;
+        cursor: pointer;
+    }
+</style>
+
+{% endblock %}

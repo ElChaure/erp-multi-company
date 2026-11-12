@@ -1,0 +1,115 @@
+{% extends "rrhh/base.html" %}
+
+{% block title %}Eliminar empresa - RRHH System{% endblock %}
+
+{% block content %}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-exclamation-triangle-fill"></i> Confirmar eliminación
+                </h5>
+            </div>
+            <div class="card-body">
+
+                <p class="mb-4">
+                    Estás a punto de eliminar permanentemente esta empresa.
+                    <strong>Esta acción no se puede deshacer.</strong>
+                </p>
+
+                <div class="d-flex align-items-center gap-3 p-3 bg-light rounded mb-4">
+                    <div class="empresa-danger-icon">
+                        <i class="bi bi-building"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">{{ empresa.razon_social }}</div>
+                        <div class="text-muted small font-monospace">{{ empresa.rif }}</div>
+                    </div>
+                </div>
+
+                {% if empleados_count > 0 %}
+                    <div class="alert alert-danger">
+                        <h6 class="alert-heading mb-2">
+                            <i class="bi bi-x-octagon"></i> No se puede eliminar
+                        </h6>
+                        <p class="mb-2">
+                            Esta empresa tiene <strong>{{ empleados_count }}</strong> empleado(s) asociado(s).
+                        </p>
+                        <p class="mb-0 small">
+                            Debes reasignar o eliminar a todos los empleados antes de eliminar la empresa.
+                            Como alternativa, puedes <strong>desactivarla</strong>.
+                        </p>
+                    </div>
+                {% elif sedes_count > 0 %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Esta empresa tiene <strong>{{ sedes_count }}</strong> sede(s) que también serán eliminadas.
+                    </div>
+                {% endif %}
+
+                <div class="mb-4">
+                    <h6 class="text-uppercase text-muted small mb-2">Se eliminará:</h6>
+                    <ul class="list-unstyled mb-0 small">
+                        <li class="mb-1">
+                            <i class="bi bi-x-circle text-danger"></i>
+                            El registro de la empresa
+                        </li>
+                        {% if sedes_count > 0 %}
+                            <li class="mb-1">
+                                <i class="bi bi-x-circle text-danger"></i>
+                                {{ sedes_count }} sede(s) asociada(s)
+                            </li>
+                        {% endif %}
+                        <li>
+                            <i class="bi bi-x-circle text-danger"></i>
+                            Referencias históricas en otros registros
+                        </li>
+                    </ul>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-between gap-2">
+                        <a href="{% url 'rrhh:empresa_detalle' empresa.pk %}"
+                           class="btn btn-outline-secondary flex-fill">
+                            <i class="bi bi-arrow-left"></i> Cancelar
+                        </a>
+                        <button type="submit"
+                                class="btn btn-danger flex-fill"
+                                {% if empleados_count > 0 %}disabled{% endif %}
+                                onclick="return confirm('¿Estás completamente seguro? Esta acción no se puede deshacer.')">
+                            <i class="bi bi-trash"></i> Sí, eliminar
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+            <div class="card-footer bg-white text-muted small">
+                <i class="bi bi-shield-exclamation"></i>
+                Esta acción quedará registrada en el log de auditoría.
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    .empresa-danger-icon {
+        display: inline-flex;
+        width: 52px;
+        height: 52px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+        color: #fff;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        flex-shrink: 0;
+    }
+    .card.border-danger { border-width: 2px; }
+</style>
+
+{% endblock %}

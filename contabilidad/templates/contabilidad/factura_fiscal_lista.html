@@ -1,0 +1,209 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Facturas Fiscales — {{ empresa.razon_social }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  {# ═══════════════ ENCABEZADO ═══════════════ #}
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h4 class="mb-0">
+        <i class="bi bi-receipt text-primary"></i>
+        Facturas Fiscales
+      </h4>
+      <small class="text-muted">{{ empresa.razon_social }}</small>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'contabilidad:libro_compras' %}" class="btn btn-outline-info btn-sm">
+        <i class="bi bi-cart-check"></i> Libro Compras
+      </a>
+      <a href="{% url 'contabilidad:libro_ventas' %}" class="btn btn-outline-info btn-sm">
+        <i class="bi bi-cart-plus"></i> Libro Ventas
+      </a>
+      <a href="{% url 'contabilidad:factura_fiscal_nueva' %}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-circle"></i> Nueva Factura
+      </a>
+    </div>
+  </div>
+
+  {# ═══════════════ FILTROS ═══════════════ #}
+  <div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-auto">
+          <label class="form-label small fw-semibold mb-1">Tipo</label>
+          <select name="tipo" class="form-select form-select-sm" style="min-width: 130px;">
+            <option value="">— Todos —</option>
+            {% for valor, etiqueta in tipos %}
+              <option value="{{ valor }}" {% if filtros.tipo == valor %}selected{% endif %}>
+                {{ etiqueta }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-auto">
+          <label class="form-label small fw-semibold mb-1">Estado</label>
+          <select name="estado" class="form-select form-select-sm" style="min-width: 130px;">
+            <option value="">— Todos —</option>
+            {% for valor, etiqueta in estados %}
+              <option value="{{ valor }}" {% if filtros.estado == valor %}selected{% endif %}>
+                {{ etiqueta }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-auto">
+          <label class="form-label small fw-semibold mb-1">Buscar</label>
+          <input type="text" name="q" class="form-control form-control-sm"
+                 value="{{ filtros.q }}" placeholder="Nº factura, RIF, nombre..."
+                 style="min-width: 220px;">
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="bi bi-funnel"></i> Filtrar
+          </button>
+          <a href="{% url 'contabilidad:factura_fiscal_lista' %}" class="btn btn-outline-secondary btn-sm">
+            Limpiar
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {# ═══════════════ KPIs ═══════════════ #}
+  <div class="row g-3 mb-3">
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body py-2">
+          <small class="text-muted text-uppercase">Total</small>
+          <h5 class="mb-0">{{ kpis.total }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body py-2">
+          <small class="text-muted text-uppercase">Compras</small>
+          <h5 class="mb-0">{{ kpis.compras }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body py-2">
+          <small class="text-muted text-uppercase">Ventas</small>
+          <h5 class="mb-0">{{ kpis.ventas }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body py-2">
+          <small class="text-muted text-uppercase">Borradores</small>
+          <h5 class="mb-0 text-warning">{{ kpis.borradores }}</h5>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ═══════════════ TABLA ═══════════════ #}
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Tipo</th>
+              <th>Nº Factura</th>
+              <th>Nº Control</th>
+              <th>Fecha</th>
+              <th>RIF</th>
+              <th>Razón Social</th>
+              <th class="text-end">Base</th>
+              <th class="text-end">IVA</th>
+              <th class="text-end">Total</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in page_obj %}
+              <tr>
+                <td>
+                  {% if f.tipo == "COMPRA" %}
+                    <span class="badge bg-info text-dark">Compra</span>
+                  {% elif f.tipo == "VENTA" %}
+                    <span class="badge bg-success">Venta</span>
+                  {% elif f.tipo == "NOTA_DEBITO" %}
+                    <span class="badge bg-warning text-dark">N. Débito</span>
+                  {% else %}
+                    <span class="badge bg-secondary">N. Crédito</span>
+                  {% endif %}
+                </td>
+                <td>{{ f.numero_factura }}</td>
+                <td>{{ f.numero_control }}</td>
+                <td>{{ f.fecha_emision|date:"d/m/Y" }}</td>
+                <td>{{ f.rif_contraparte }}</td>
+                <td>{{ f.razon_social_contraparte }}</td>
+                <td class="text-end">{{ f.base_imponible|floatformat:2 }}</td>
+                <td class="text-end">{{ f.monto_iva|floatformat:2 }}</td>
+                <td class="text-end fw-semibold">{{ f.monto_total|floatformat:2 }}</td>
+                <td>
+                  {% if f.estado == "confirmada" %}
+                    <span class="badge bg-success">Confirmada</span>
+                  {% elif f.estado == "borrador" %}
+                    <span class="badge bg-warning text-dark">Borrador</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Anulada</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{% url 'contabilidad:factura_fiscal_detalle' f.id %}"
+                     class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-eye"></i>
+                  </a>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="11" class="text-center text-muted py-4">
+                  No hay facturas registradas.
+                  <a href="{% url 'contabilidad:factura_fiscal_nueva' %}">Crear la primera</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {# ═══════════════ PAGINACIÓN ═══════════════ #}
+    {% if page_obj.has_other_pages %}
+      <div class="card-footer bg-white">
+        <nav>
+          <ul class="pagination pagination-sm mb-0 justify-content-center">
+            {% if page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}">
+                  &laquo;
+                </a>
+              </li>
+            {% endif %}
+            <li class="page-item disabled">
+              <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            </li>
+            {% if page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}">
+                  &raquo;
+                </a>
+              </li>
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

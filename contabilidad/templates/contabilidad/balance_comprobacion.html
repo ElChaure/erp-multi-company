@@ -1,0 +1,83 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Balance de Comprobación - Contabilidad{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="mb-1"><i class="bi bi-clipboard-check text-primary"></i> Balance de Comprobación</h1>
+        <p class="text-muted mb-0 small">{{ empresa.razon_social }}</p>
+    </div>
+    {% if cuadra %}
+        <span class="badge bg-success fs-6"><i class="bi bi-check-circle-fill"></i> Cuadra</span>
+    {% else %}
+        <span class="badge bg-danger fs-6"><i class="bi bi-x-circle-fill"></i> No cuadra</span>
+    {% endif %}
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small">Año</label>
+                <input type="number" name="anio" class="form-control form-control-sm" value="{{ filtros.anio }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small">Mes (opcional)</label>
+                <input type="number" name="mes" class="form-control form-control-sm" value="{{ filtros.mes }}" placeholder="Todos">
+            </div>
+            <div class="col-md-6">
+                <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-search"></i> Filtrar</button>
+                <a href="{% url 'contabilidad:balance_comprobacion' %}" class="btn btn-sm btn-outline-secondary">Limpiar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        {% if filas %}
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Código</th>
+                        <th>Cuenta</th>
+                        <th class="text-end">Débitos</th>
+                        <th class="text-end">Créditos</th>
+                        <th class="text-end">Saldo Deudor</th>
+                        <th class="text-end">Saldo Acreedor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in filas %}
+                    <tr>
+                        <td class="small fw-semibold">{{ f.codigo }}</td>
+                        <td class="small">{{ f.nombre }}</td>
+                        <td class="text-end small">Bs. {{ f.debito|floatformat:2 }}</td>
+                        <td class="text-end small">Bs. {{ f.credito|floatformat:2 }}</td>
+                        <td class="text-end small">{% if f.saldo_deudor > 0 %}Bs. {{ f.saldo_deudor|floatformat:2 }}{% endif %}</td>
+                        <td class="text-end small">{% if f.saldo_acreedor > 0 %}Bs. {{ f.saldo_acreedor|floatformat:2 }}{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light fw-bold">
+                    <tr>
+                        <td colspan="2" class="text-end">Totales</td>
+                        <td class="text-end">Bs. {{ gran_total_debito|floatformat:2 }}</td>
+                        <td class="text-end">Bs. {{ gran_total_credito|floatformat:2 }}</td>
+                        <td class="text-end">Bs. {{ gran_saldo_deudor|floatformat:2 }}</td>
+                        <td class="text-end">Bs. {{ gran_saldo_acreedor|floatformat:2 }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            <p>No hay movimientos en el período seleccionado.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

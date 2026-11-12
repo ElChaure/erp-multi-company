@@ -1,0 +1,221 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Presupuesto vs Real — {{ presupuesto.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  {# ═══════════════ ENCABEZADO ═══════════════ #}
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h4 class="mb-0">
+        <i class="bi bi-bar-chart-line text-primary"></i>
+        Presupuesto vs Real — {{ presupuesto.nombre }}
+      </h4>
+      <small class="text-muted">
+        Ejercicio {{ presupuesto.ejercicio.anio }} ·
+        {{ empresa.razon_social }}
+        {% if centro_filtro %}
+          · <span class="badge bg-primary">{{ centro_filtro.codigo }} — {{ centro_filtro.nombre }}</span>
+        {% endif %}
+      </small>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{% url 'contabilidad:presupuesto_vs_real_export' presupuesto.id %}{{ qs_export }}"
+         class="btn btn-success btn-sm">
+        <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+      </a>
+      <a href="{% url 'contabilidad:dashboard_gerencial' presupuesto.id %}"
+         class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-speedometer2"></i> Dashboard
+      </a>
+      <a href="{% url 'contabilidad:presupuesto_detalle' presupuesto.id %}"
+         class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-pencil-square"></i> Editar presupuesto
+      </a>
+      <a href="{% url 'contabilidad:presupuesto_lista' %}"
+         class="btn btn-outline-dark btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+      </a>
+    </div>
+  </div>
+
+  {# ═══════════════ FILTRO POR CENTRO DE COSTO ═══════════════ #}
+  <div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+      <form method="get" class="row g-2 align-items-center">
+        <div class="col-auto">
+          <label class="col-form-label fw-semibold">
+            <i class="bi bi-funnel"></i> Centro de Costo:
+          </label>
+        </div>
+        <div class="col-auto">
+          <select name="centro" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">— Todos —</option>
+            {% for cc in centros %}
+              <option value="{{ cc.id }}"
+                {% if centro_filtro and centro_filtro.id == cc.id %}selected{% endif %}>
+                {{ cc.codigo }} — {{ cc.nombre }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        {% if centro_filtro %}
+          <div class="col-auto">
+            <a href="{% url 'contabilidad:presupuesto_vs_real' presupuesto.id %}"
+               class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-x-circle"></i> Limpiar filtro
+            </a>
+          </div>
+        {% endif %}
+        <div class="col-auto ms-auto">
+          <small class="text-muted">
+            {{ filas|length }} línea(s) mostrada(s)
+          </small>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {# ═══════════════ TABLA ═══════════════ #}
+  {% if filas %}
+    <div class="card shadow-sm">
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height: 75vh; overflow-y: auto;">
+          <table class="table table-sm table-bordered align-middle mb-0" id="tabla-vs-real">
+            <thead class="table-light sticky-top">
+              {# ─── Fila 1: agrupadores por mes ─── #}
+              <tr>
+                <th rowspan="2" style="min-width: 240px;" class="align-middle">Cuenta</th>
+                <th rowspan="2" style="min-width: 140px;" class="align-middle">Centro Costo</th>
+                {% for label in meses_labels %}
+                  <th colspan="2" class="text-center border-start">{{ label }}</th>
+                {% endfor %}
+                <th colspan="3" class="text-center border-start bg-warning-subtle">Totales Anuales</th>
+              </tr>
+              {# ─── Fila 2: Pres. / Real por mes ─── #}
+              <tr>
+                {% for label in meses_labels %}
+                  <th class="text-end border-start" style="min-width: 80px;">Pres.</th>
+                  <th class="text-end" style="min-width: 80px;">Real</th>
+                {% endfor %}
+                <th class="text-end border-start bg-warning-subtle" style="min-width: 100px;">Pres.</th>
+                <th class="text-end bg-warning-subtle" style="min-width: 100px;">Real</th>
+                <th class="text-end bg-warning-subtle" style="min-width: 120px;">Desviación</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for fila in filas %}
+                <tr>
+                  {# ── Cuenta ── #}
+                  <td>
+                    <div class="fw-semibold">{{ fila.cuenta.codigo }} — {{ fila.cuenta.nombre }}</div>
+                    <small class="text-muted">{{ fila.cuenta.get_tipo_display }}</small>
+                  </td>
+                  {# ── Centro de Costo ── #}
+                  <td>
+                    {% if fila.centro_costo %}
+                      <span class="badge bg-secondary">{{ fila.centro_costo.codigo }}</span>
+                      <small class="text-muted">{{ fila.centro_costo.nombre }}</small>
+                    {% else %}
+                      <span class="text-muted">— Sin CC —</span>
+                    {% endif %}
+                  </td>
+                  {# ── Meses ── #}
+                  {% for mes in fila.meses %}
+                    <td class="text-end border-start {% if mes.presupuesto > 0 or mes.real > 0 %}{% if mes.es_favorable %}table-success{% else %}table-danger{% endif %}{% endif %}">
+                      {{ mes.presupuesto|floatformat:2 }}
+                    </td>
+                    <td class="text-end {% if mes.presupuesto > 0 or mes.real > 0 %}{% if mes.es_favorable %}table-success{% else %}table-danger{% endif %}{% endif %}">
+                      {{ mes.real|floatformat:2 }}
+                    </td>
+                  {% endfor %}
+                  {# ── Totales ── #}
+                  <td class="text-end border-start bg-warning-subtle fw-semibold">
+                    {{ fila.total_presupuesto|floatformat:2 }}
+                  </td>
+                  <td class="text-end bg-warning-subtle fw-semibold">
+                    {{ fila.total_real|floatformat:2 }}
+                  </td>
+                  <td class="text-end bg-warning-subtle fw-semibold {% if fila.total_desviacion.es_favorable %}text-success{% else %}text-danger{% endif %}">
+                    {{ fila.total_desviacion.diferencia|floatformat:2 }}
+                    <br>
+                    <small>({{ fila.total_desviacion.porcentaje|floatformat:1 }}%)</small>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot class="table-warning">
+              <tr>
+                <th colspan="2" class="text-end">GRAN TOTAL</th>
+                {% for tm in totales_por_mes %}
+                  <th class="text-end border-start">{{ tm.presupuesto|floatformat:2 }}</th>
+                  <th class="text-end">{{ tm.real|floatformat:2 }}</th>
+                {% endfor %}
+                <th class="text-end border-start">{{ gran_total_pres|floatformat:2 }}</th>
+                <th class="text-end">{{ gran_total_real|floatformat:2 }}</th>
+                <th class="text-end {% if gran_total_desv_monto >= 0 %}text-success{% else %}text-danger{% endif %}">
+                  {{ gran_total_desv_monto|floatformat:2 }}
+                  <br>
+                  <small>({{ gran_total_desv_pct|floatformat:1 }}%)</small>
+                </th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    {# ═══════════════ LEYENDA ═══════════════ #}
+    <div class="mt-3 small text-muted d-flex flex-wrap gap-3">
+      <span><span class="badge table-success">&nbsp;&nbsp;&nbsp;</span> Favorable (dentro o mejor que presupuesto)</span>
+      <span><span class="badge table-danger">&nbsp;&nbsp;&nbsp;</span> Desfavorable (excede o no alcanza presupuesto)</span>
+      <span><span class="badge bg-light text-dark border">&nbsp;&nbsp;&nbsp;</span> Sin presupuesto ni real</span>
+      <span class="ms-auto">
+        <i class="bi bi-info-circle"></i>
+        Ingresos: favorable si Real ≥ Presupuesto · Gastos/Costos: favorable si Real ≤ Presupuesto
+      </span>
+    </div>
+  {% else %}
+    <div class="card shadow-sm">
+      <div class="card-body text-center py-5">
+        <i class="bi bi-inbox fs-1 text-muted"></i>
+        <h5 class="mt-3">No hay líneas para mostrar</h5>
+        <p class="text-muted mb-3">
+          {% if centro_filtro %}
+            No hay líneas presupuestadas para el Centro de Costo
+            <strong>{{ centro_filtro.codigo }} — {{ centro_filtro.nombre }}</strong>.
+          {% else %}
+            Aún no se han cargado líneas en este presupuesto.
+          {% endif %}
+        </p>
+        <a href="{% url 'contabilidad:presupuesto_detalle' presupuesto.id %}"
+           class="btn btn-primary btn-sm">
+          <i class="bi bi-pencil-square"></i> Cargar presupuesto
+        </a>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+
+<style>
+  #tabla-vs-real tbody tr:hover {
+    background-color: #f8fafc;
+  }
+  #tabla-vs-real td,
+  #tabla-vs-real th {
+    font-size: 0.85rem;
+    vertical-align: middle;
+  }
+  #tabla-vs-real .table-success {
+    background-color: #d1fae5 !important;
+  }
+  #tabla-vs-real .table-danger {
+    background-color: #fee2e2 !important;
+  }
+  #tabla-vs-real tfoot th {
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+</style>
+{% endblock %}

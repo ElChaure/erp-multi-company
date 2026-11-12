@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+    @page {
+        size: letter;
+        margin: 2cm 2cm 2cm 2cm;
+    }
+    body {
+        font-family: "Helvetica", "Arial", sans-serif;
+        font-size: 11pt;
+        color: #1a1a1a;
+        line-height: 1.5;
+    }
+    .header {
+        border-bottom: 2px solid #333;
+        padding-bottom: 15px;
+        margin-bottom: 25px;
+    }
+    .header td {
+        vertical-align: middle;
+    }
+    .logo-cell {
+        width: 100px;
+    }
+    .logo {
+        max-width: 90px;
+        max-height: 90px;
+    }
+    .empresa-info {
+        text-align: right;
+        font-size: 9pt;
+        color: #333;
+        line-height: 1.4;
+    }
+    .empresa-nombre {
+        font-weight: bold;
+        font-size: 12pt;
+        color: #000;
+    }
+    .titulo {
+        text-align: center;
+        font-size: 16pt;
+        font-weight: bold;
+        letter-spacing: 2px;
+        margin: 25px 0 10px 0;
+        text-transform: uppercase;
+    }
+    .numero-control {
+        text-align: right;
+        font-size: 9pt;
+        color: #555;
+        margin-bottom: 15px;
+    }
+    .fecha-lugar {
+        text-align: right;
+        margin-bottom: 25px;
+        font-size: 11pt;
+    }
+    .cuerpo {
+        text-align: justify;
+        margin-bottom: 20px;
+        font-size: 11pt;
+        line-height: 1.8;
+    }
+    .cuerpo p {
+        margin: 12px 0;
+    }
+    .destinatario {
+        margin-bottom: 15px;
+        font-weight: bold;
+    }
+    .firma-bloque {
+        margin-top: 60px;
+        text-align: center;
+    }
+    .firma-nombre {
+        font-weight: bold;
+        margin-top: 5px;
+        font-size: 11pt;
+    }
+    .firma-cargo {
+        font-size: 10pt;
+        color: #333;
+    }
+    .firma-linea {
+        border-top: 1px solid #333;
+        width: 60%;
+        margin: 5px auto;
+        padding-top: 5px;
+    }
+    .sello {
+        margin-top: 15px;
+    }
+    .sello img {
+        max-width: 150px;
+        max-height: 80px;
+    }
+    .firma-imagen {
+        max-width: 200px;
+        max-height: 60px;
+    }
+    .footer {
+        position: absolute;
+        bottom: 1.5cm;
+        left: 2cm;
+        right: 2cm;
+        font-size: 8pt;
+        color: #888;
+        text-align: center;
+        border-top: 1px solid #ddd;
+        padding-top: 5px;
+    }
+</style>
+</head>
+<body>
+
+<!-- ENCABEZADO -->
+<table class="header" width="100%">
+    <tr>
+        {% if logo_base64 %}
+        <td class="logo-cell">
+            <img src="data:image/png;base64,{{ logo_base64 }}" class="logo" alt="Logo">
+        </td>
+        {% endif %}
+        <td class="empresa-info">
+            <div class="empresa-nombre">{{ empresa.razon_social }}</div>
+            <div>RIF: {{ empresa.rif }}</div>
+            <div>{{ empresa.direccion }}</div>
+            {% if empresa.telefono %}<div>Telf: {{ empresa.telefono }}</div>{% endif %}
+            {% if empresa.email %}<div>{{ empresa.email }}</div>{% endif %}
+        </td>
+    </tr>
+</table>
+
+<!-- NÚMERO DE CONTROL -->
+<div class="numero-control">
+    Nº de Control: <strong>{{ numero_control }}</strong>
+</div>
+
+<!-- TÍTULO -->
+<div class="titulo">Constancia de Trabajo</div>
+
+<!-- FECHA Y LUGAR -->
+<div class="fecha-lugar">
+    {{ ciudad }}, {{ fecha_emision_larga }}
+</div>
+
+<!-- DESTINATARIO -->
+<div class="destinatario">
+    {{ destinatario }}:
+</div>
+
+<!-- CUERPO -->
+<div class="cuerpo">
+    <p>
+        Por medio de la presente hacemos constar que
+        <strong>{{ empleado.nombre_completo }}</strong>,
+        titular de la cédula de identidad N.º
+        <strong>{{ empleado.cedula_completa }}</strong>,
+        presta servicios en esta entidad de trabajo desde el
+        <strong>{{ empleado.fecha_ingreso|date:"d/m/Y" }}</strong>,
+        desempeñando actualmente el cargo de
+        <strong>{{ empleado.cargo.nombre|default:"—" }}</strong>.
+    </p>
+
+    {% if empleado.fecha_egreso %}
+    <p>
+        El mencionado trabajador culminó su relación laboral con esta empresa
+        en fecha <strong>{{ empleado.fecha_egreso|date:"d/m/Y" }}</strong>,
+        encontrándose actualmente como egresado.
+    </p>
+    {% endif %}
+
+    {% if con_salario %}
+    <p>
+        A solicitud de la parte interesada, se hace constar que su remuneración
+        actual es de
+        <strong>{{ salario_monto|floatformat:2 }} Bs.</strong>
+        {{ salario_periodicidad }}.
+    </p>
+    {% endif %}
+
+    <p>
+        La presente constancia se expide a solicitud de la parte interesada
+        para los fines que estime convenientes.
+    </p>
+</div>
+
+<!-- FIRMA -->
+<div class="firma-bloque">
+    {% if firma_base64 %}
+    <div>
+        <img src="data:image/png;base64,{{ firma_base64 }}" class="firma-imagen" alt="Firma">
+    </div>
+    {% endif %}
+
+    <div class="firma-linea"></div>
+    <div class="firma-nombre">{{ nombre_firmante|default:"________________________" }}</div>
+    <div class="firma-cargo">{{ cargo_firmante|default:"" }}</div>
+
+    {% if sello_base64 %}
+    <div class="sello">
+        <img src="data:image/png;base64,{{ sello_base64 }}" alt="Sello">
+    </div>
+    {% endif %}
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+    Documento emitido electrónicamente — {{ numero_control }}
+</div>
+
+</body>
+</html>

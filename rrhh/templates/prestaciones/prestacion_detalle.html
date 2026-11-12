@@ -1,0 +1,430 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Prestaciones - {{ empleado.nombre_completo }}{% endblock %}
+
+{% block content %}
+{# ═══════════════════════════════════════════════════ #}
+{# HEADER                                            #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="d-flex flex-wrap justify-content-between align-items-start mb-4 gap-3">
+    <div>
+        <a href="{% url 'rrhh:prestacion_lista' %}" class="text-muted small text-decoration-none">
+            <i class="bi bi-arrow-left"></i> Volver al listado
+        </a>
+        <h1 class="mb-1 mt-1">
+            {{ empleado.nombre_completo }}
+            <small class="text-muted fs-6">· {{ empleado.numero_empleado }}</small>
+        </h1>
+        <p class="text-muted mb-0 small">
+            {{ empleado.cargo.nombre|default:"Sin cargo" }}
+            · Ingreso: <strong>{{ empleado.fecha_ingreso|date:"d/m/Y" }}</strong>
+            · <span class="badge bg-info text-dark">{{ anios_servicio }} año(s) de servicio</span>
+            {% if prestacion.estatus == "liquidada" %}
+            · <span class="badge bg-secondary">Liquidada el {{ prestacion.fecha_liquidacion|date:"d/m/Y" }}</span>
+            {% endif %}
+        </p>
+    </div>
+    {% if puede_gestionar %}
+    <div class="d-flex flex-wrap gap-1">
+        <a href="{% url 'rrhh:prestacion_calculadora' empleado.id %}"
+           class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-calculator"></i> Simulador
+        </a>
+        <button type="button" class="btn btn-sm btn-outline-warning"
+                data-bs-toggle="modal" data-bs-target="#modal-recalcular">
+            <i class="bi bi-arrow-clockwise"></i> Recalcular
+        </button>
+        {% if prestacion.estatus != "liquidada" %}
+        <button type="button" class="btn btn-sm btn-danger"
+                data-bs-toggle="modal" data-bs-target="#modal-liquidar">
+            <i class="bi bi-cash-coin"></i> Liquidar
+        </button>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{# ═══════════════════════════════════════════════════ #}
+{# KPIs DE LA PRESTACIÓN                             #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 border-success">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Garantía acumulada</h6>
+                <h3 class="mb-1 text-success">Bs. {{ prestacion.saldo_garantia_ves|floatformat:2 }}</h3>
+                <small class="text-muted">
+                    Literales a + b · {{ prestacion.depositos.count }} depósito(s)
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Intereses acumulados</h6>
+                <h3 class="mb-1 text-info">Bs. {{ prestacion.saldo_intereses_ves|floatformat:2 }}</h3>
+                <small class="text-muted">Art. 143 LOTTT</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Retroactivo (c)</h6>
+                <h3 class="mb-1 text-warning">
+                    Bs. {{ prestacion.ultimo_retroactivo|default:0|floatformat:2 }}
+                </h3>
+                <small class="text-muted">
+                    {% if calculo %}
+                    30 × {{ calculo.retroactivo.anios_para_calculo }} año(s) = {{ calculo.retroactivo.dias_retroactivo }} días
+                    {% else %}
+                    Sin cálculo
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 border-primary">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Saldo total</h6>
+                <h3 class="mb-1 text-primary">Bs. {{ prestacion.saldo_total_ves|floatformat:2 }}</h3>
+                <small class="text-muted">
+                    Método aplicado:
+                    <span class="badge bg-{% if prestacion.ultimo_metodo_aplicado == 'garantia' %}success{% elif prestacion.ultimo_metodo_aplicado == 'retroactivo' %}warning text-dark{% else %}secondary{% endif %}">
+                        {{ prestacion.ultimo_metodo_aplicado|default:"—"|title }}
+                    </span>
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════ #}
+{# COMPARACIÓN Art. 142.d                            #}
+{# ═══════════════════════════════════════════════════ #}
+{% if calculo %}
+<div class="card mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="bi bi-bar-chart-line text-primary"></i>
+            Comparación Art. 142.d — Garantía vs Retroactivo
+        </h6>
+        <small class="text-muted">
+            Fecha de corte: {{ calculo.fecha_corte|date:"d/m/Y" }}
+        </small>
+    </div>
+    <div class="card-body">
+        {% with g=calculo.garantia.total_ves r=calculo.retroactivo.monto_ves %}
+        {% with max_val=g|add:r %}
+        <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+                <span class="fw-semibold">
+                    <i class="bi bi-shield-check text-success"></i>
+                    Garantía (a + b)
+                </span>
+                <span class="fw-bold text-success">Bs. {{ g|floatformat:2 }}</span>
+            </div>
+            <div class="progress" style="height: 24px;">
+                {% if r > 0 %}
+                <div class="progress-bar bg-success"
+                     style="width: {% widthratio g r 50 %}%; min-width: 30px;">
+                    {{ calculo.garantia.total_dias }} días
+                </div>
+                {% else %}
+                <div class="progress-bar bg-success" style="width: 100%;">
+                    {{ calculo.garantia.total_dias }} días
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+                <span class="fw-semibold">
+                    <i class="bi bi-arrow-repeat text-warning"></i>
+                    Retroactivo (c)
+                </span>
+                <span class="fw-bold text-warning">Bs. {{ r|floatformat:2 }}</span>
+            </div>
+            <div class="progress" style="height: 24px;">
+                {% if g > 0 %}
+                <div class="progress-bar bg-warning text-dark"
+                     style="width: {% widthratio r g 50 %}%; min-width: 30px;">
+                    {{ calculo.retroactivo.dias_retroactivo }} días
+                </div>
+                {% else %}
+                <div class="progress-bar bg-warning text-dark" style="width: 100%;">
+                    {{ calculo.retroactivo.dias_retroactivo }} días
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endwith %}
+        {% endwith %}
+
+        <div class="alert alert-{% if calculo.metodo_seleccionado == 'garantia' %}success{% else %}warning{% endif %} mb-0 mt-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="bi bi-check-circle-fill"></i>
+                    <strong>Se paga:</strong>
+                    {{ calculo.metodo_seleccionado|upper }}
+                    <span class="badge bg-{% if calculo.metodo_seleccionado == 'garantia' %}success{% else %}warning text-dark{% endif %} ms-2">
+                        Art. 142.d
+                    </span>
+                </div>
+                <div class="fs-4 fw-bold">
+                    Bs. {{ calculo.monto_final_ves|floatformat:2 }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# ═══════════════════════════════════════════════════ #}
+{# HISTÓRICO DE DEPÓSITOS                            #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="card mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="bi bi-list-ul text-secondary"></i>
+            Histórico de depósitos trimestrales
+        </h6>
+        <span class="badge bg-light text-dark">{{ page_dep.paginator.count }} trimestre(s)</span>
+    </div>
+    <div class="card-body p-0">
+        {% if page_dep %}
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Trimestre</th>
+                        <th>Rango</th>
+                        <th class="text-center">Días garantía</th>
+                        <th class="text-center">Días adicionales</th>
+                        <th class="text-end">Salario integral</th>
+                        <th class="text-end">Monto</th>
+                        <th class="text-end">Intereses</th>
+                        <th class="text-center">Estatus</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in page_dep %}
+                    <tr>
+                        <td class="fw-semibold small">{{ d.trimestre_label }}</td>
+                        <td class="text-muted small">
+                            {{ d.fecha_inicio|date:"d/m/Y" }} 
+                            → 
+                            {{ d.fecha_fin|date:"d/m/Y" }}
+                        </td>
+                        <td class="text-center small">{{ d.dias_garantia|floatformat:0 }}</td>
+                        <td class="text-center small">
+                            {% if d.dias_adicionales > 0 %}
+                            <span class="badge bg-info text-dark">+{{ d.dias_adicionales|floatformat:0 }}</span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end small">Bs. {{ d.salario_integral_diario_ves|floatformat:2 }}</td>
+                        <td class="text-end fw-semibold">Bs. {{ d.monto_ves|floatformat:2 }}</td>
+                        <td class="text-end small text-info">Bs. {{ d.intereses_ves|floatformat:2 }}</td>
+                        <td class="text-center">
+                            {% if d.estatus == "calculado" %}
+                            <span class="badge bg-warning text-dark">Calc.</span>
+                            {% elif d.estatus == "depositado" %}
+                            <span class="badge bg-primary">Depositado</span>
+                            {% elif d.estatus == "acreditado" %}
+                            <span class="badge bg-success">Acreditado</span>
+                            {% elif d.estatus == "anulado" %}
+                            <span class="badge bg-secondary">Anulado</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <td colspan="5" class="text-end fw-semibold small">Total:</td>
+                        <td class="text-end fw-bold text-success">
+                            Bs. {{ prestacion.saldo_garantia_ves|floatformat:2 }}
+                        </td>
+                        <td class="text-end fw-bold text-info">
+                            Bs. {{ prestacion.saldo_intereses_ves|floatformat:2 }}
+                        </td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            <p class="mb-0">Aún no hay depósitos registrados</p>
+            <small>Usa el botón "Recalcular" para generarlos</small>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if page_dep.has_other_pages %}
+    <div class="card-footer bg-white">
+        <nav>
+            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                {% if page_dep.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page_dep={{ page_dep.previous_page_number }}">«</a>
+                </li>
+                {% endif %}
+                <li class="page-item active">
+                    <span class="page-link">
+                        {{ page_dep.number }} / {{ page_dep.paginator.num_pages }}
+                    </span>
+                </li>
+                {% if page_dep.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page_dep={{ page_dep.next_page_number }}">»</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+{# ═══════════════════════════════════════════════════ #}
+{# ÚLTIMOS CÁLCULOS RETROACTIVOS                     #}
+{# ═══════════════════════════════════════════════════ #}
+{% if calculos_retro %}
+<div class="card mb-4">
+    <div class="card-header bg-white">
+        <h6 class="mb-0">
+            <i class="bi bi-clock-history text-secondary"></i>
+            Últimos cálculos retroactivos registrados
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Fecha de corte</th>
+                        <th class="text-center">Años</th>
+                        <th class="text-end">Garantía en ese momento</th>
+                        <th class="text-end">Retroactivo</th>
+                        <th class="text-center">Método</th>
+                        <th class="text-end">Monto final</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in calculos_retro %}
+                    <tr>
+                        <td class="small">{{ c.fecha_corte|date:"d/m/Y" }}</td>
+                        <td class="text-center small">{{ c.anios_servicio|floatformat:0 }}</td>
+                        <td class="text-end small">Bs. {{ c.saldo_garantia_ves|floatformat:2 }}</td>
+                        <td class="text-end small text-warning">Bs. {{ c.monto_retroactivo_ves|floatformat:2 }}</td>
+                        <td class="text-center">
+                            <span class="badge bg-{% if c.metodo_seleccionado == 'garantia' %}success{% else %}warning text-dark{% endif %}">
+                                {{ c.metodo_seleccionado|title }}
+                            </span>
+                        </td>
+                        <td class="text-end fw-semibold">Bs. {{ c.monto_final_ves|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# ═══════════════════════════════════════════════════ #}
+{# MODALES DE CONFIRMACIÓN                           #}
+{# ═══════════════════════════════════════════════════ #}
+{% if puede_gestionar %}
+{# Modal Recalcular #}
+<div class="modal fade" id="modal-recalcular" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i class="bi bi-arrow-clockwise"></i> Recalcular prestación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>
+                    Vas a <strong>recalcular</strong> los depósitos y saldos de
+                    <strong>{{ empleado.nombre_completo }}</strong>.
+                </p>
+                <p class="text-muted small mb-0">
+                    Se regenerarán los depósitos trimestrales según el salario actual
+                    y se actualizará el comparativo garantía vs retroactivo.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <form method="post" action="{% url 'rrhh:prestacion_recalcular' empleado.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-check2"></i> Sí, recalcular
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Modal Liquidar #}
+{% if prestacion.estatus != "liquidada" %}
+<div class="modal fade" id="modal-liquidar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-cash-coin"></i> Liquidar prestaciones
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'rrhh:prestacion_liquidar' empleado.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p>
+                        Vas a <strong>liquidar</strong> las prestaciones sociales de
+                        <strong>{{ empleado.nombre_completo }}</strong>.
+                    </p>
+
+                    <div class="mb-3">
+                        <label for="fecha_egreso" class="form-label small text-muted">
+                            Fecha de egreso
+                        </label>
+                        <input type="date" name="fecha_egreso" id="fecha_egreso"
+                               class="form-control"
+                               value="{{ empleado.fecha_egreso|default:''|date:'Y-m-d' }}"
+                               max="{% now 'Y-m-d' %}">
+                        <small class="text-muted">Si se deja vacío, se usa hoy.</small>
+                    </div>
+
+                    <div class="alert alert-danger small mb-0">
+                        <i class="bi bi-exclamation-octagon"></i>
+                        <strong>Acción irreversible.</strong>
+                        Se marcará la prestación como <em>liquidada</em> y el empleado
+                        cambiará a estatus <em>baja</em>. No se puede deshacer.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-cash-coin"></i> Sí, liquidar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+{% endblock %}

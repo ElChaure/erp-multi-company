@@ -1,0 +1,223 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Libro de Compras — {{ empresa.razon_social }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  {# ═══════════════ ENCABEZADO ═══════════════ #}
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h4 class="mb-0">
+        <i class="bi bi-cart-check text-primary"></i>
+        Libro de Compras
+      </h4>
+      <small class="text-muted">
+        {{ empresa.razon_social }} · Período {{ mes|stringformat:"02d" }}/{{ anio }}
+      </small>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'contabilidad:libro_compras_export' %}?anio={{ anio }}&mes={{ mes }}"
+         class="btn btn-success btn-sm">
+        <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+      </a>
+      <a href="{% url 'contabilidad:libro_compras_txt' %}?anio={{ anio }}&mes={{ mes }}"
+         class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-file-earmark-text"></i> Exportar TXT
+      </a>
+      <a href="{% url 'contabilidad:factura_fiscal_lista' %}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-receipt"></i> Facturas
+      </a>
+    </div>
+  </div>
+
+  {# ═══════════════ FILTRO ═══════════════ #}
+  <div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-auto">
+          <label class="form-label small fw-semibold mb-1">Año</label>
+          <input type="number" name="anio" class="form-control form-control-sm"
+                 value="{{ anio }}" style="max-width: 100px;">
+        </div>
+        <div class="col-auto">
+          <label class="form-label small fw-semibold mb-1">Mes</label>
+          <select name="mes" class="form-select form-select-sm" style="min-width: 150px;">
+            {% for num, nombre in meses %}
+              <option value="{{ num }}" {% if num == mes %}selected{% endif %}>{{ nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="bi bi-funnel"></i> Filtrar
+          </button>
+        </div>
+        <div class="col-auto ms-auto">
+          <small class="text-muted">{{ libro.total_facturas }} factura(s)</small>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {# ═══════════════ ALERTA FACTURAS INCOMPLETAS ═══════════════ #}
+  {% if libro.facturas_incompletas %}
+    <div class="alert alert-warning">
+      <strong><i class="bi bi-exclamation-triangle"></i> {{ libro.facturas_incompletas|length }} factura(s) con datos incompletos</strong>
+      <ul class="mb-0 mt-2">
+        {% for f in libro.facturas_incompletas %}
+          <li>
+            {{ f.numero_factura }} — {{ f.razon_social_contraparte }}:
+            {{ f.errores_validacion|join:", " }}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {# ═══════════════ KPIs ═══════════════ #}
+  <div class="row g-3 mb-3">
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100 border-start border-4 border-primary">
+        <div class="card-body">
+          <small class="text-muted text-uppercase">Base Imponible</small>
+          <h5 class="mb-0 mt-1">Bs. {{ libro.totales.base_imponible|floatformat:2 }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100 border-start border-4 border-success">
+        <div class="card-body">
+          <small class="text-muted text-uppercase">IVA</small>
+          <h5 class="mb-0 mt-1">Bs. {{ libro.totales.monto_iva|floatformat:2 }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100 border-start border-4 border-warning">
+        <div class="card-body">
+          <small class="text-muted text-uppercase">Exento</small>
+          <h5 class="mb-0 mt-1">Bs. {{ libro.totales.monto_exento|floatformat:2 }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100 border-start border-4 border-info">
+        <div class="card-body">
+          <small class="text-muted text-uppercase">Total</small>
+          <h5 class="mb-0 mt-1">Bs. {{ libro.totales.monto_total|floatformat:2 }}</h5>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ═══════════════ TABLA ═══════════════ #}
+  {% if libro.filas %}
+    <div class="card shadow-sm">
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
+          <table class="table table-sm table-bordered align-middle mb-0">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th class="text-end">Nº Op.</th>
+                <th>Fecha</th>
+                <th>Nº Factura</th>
+                <th>Nº Control</th>
+                <th>RIF</th>
+                <th>Razón Social</th>
+                <th class="text-end">Base</th>
+                <th class="text-end">%</th>
+                <th class="text-end">IVA</th>
+                <th class="text-end">Exento</th>
+                <th class="text-end">Total</th>
+                <th class="text-end">IVA Ret.</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for f in libro.filas %}
+                <tr {% if f.errores_validacion %}class="table-warning"{% endif %}>
+                  <td class="text-end">{{ f.numero_operacion }}</td>
+                  <td>{{ f.fecha_formateada }}</td>
+                  <td>
+                    <a href="{% url 'contabilidad:factura_fiscal_detalle' f.factura_id %}">
+                      {{ f.numero_factura }}
+                    </a>
+                  </td>
+                  <td>{{ f.numero_control }}</td>
+                  <td>{{ f.rif_contraparte }}</td>
+                  <td>{{ f.razon_social_contraparte }}</td>
+                  <td class="text-end">{{ f.base_imponible|floatformat:2 }}</td>
+                  <td class="text-end">{{ f.alicuota_iva|floatformat:2 }}%</td>
+                  <td class="text-end">{{ f.monto_iva|floatformat:2 }}</td>
+                  <td class="text-end">{{ f.monto_exento|floatformat:2 }}</td>
+                  <td class="text-end fw-semibold">{{ f.monto_total|floatformat:2 }}</td>
+                  <td class="text-end">{{ f.iva_retenido|floatformat:2 }}</td>
+                  <td>
+                    {% if f.estado == "confirmada" %}
+                      <span class="badge bg-success">Confirmada</span>
+                    {% elif f.estado == "borrador" %}
+                      <span class="badge bg-warning text-dark">Borrador</span>
+                    {% else %}
+                      <span class="badge bg-secondary">Anulada</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot class="table-warning">
+              <tr>
+                <th colspan="6" class="text-end">TOTALES</th>
+                <th class="text-end">{{ libro.totales.base_imponible|floatformat:2 }}</th>
+                <th></th>
+                <th class="text-end">{{ libro.totales.monto_iva|floatformat:2 }}</th>
+                <th class="text-end">{{ libro.totales.monto_exento|floatformat:2 }}</th>
+                <th class="text-end">{{ libro.totales.monto_total|floatformat:2 }}</th>
+                <th class="text-end">{{ libro.totales.iva_retenido|floatformat:2 }}</th>
+                <th></th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    {# ═══════════════ RESUMEN POR ALÍCUOTA ═══════════════ #}
+    <div class="mt-3">
+      <strong><i class="bi bi-pie-chart"></i> Resumen por alícuota</strong>
+      <div class="row g-2 mt-2">
+        {% for alicuota, datos in libro.resumen_alicuotas.items %}
+          <div class="col-md-3">
+            <div class="card shadow-sm">
+              <div class="card-body py-2">
+                <div class="d-flex justify-content-between">
+                  <span class="fw-semibold">
+                    {% if alicuota == "EXENTO" %}Exento{% else %}{{ alicuota }}%{% endif %}
+                  </span>
+                  <span class="text-muted small">{{ datos.cantidad }} fact.</span>
+                </div>
+                <div class="small text-muted">Base: Bs. {{ datos.base|floatformat:2 }}</div>
+                <div class="small text-muted">IVA: Bs. {{ datos.iva|floatformat:2 }}</div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% else %}
+    <div class="card shadow-sm">
+      <div class="card-body text-center py-5">
+        <i class="bi bi-inbox fs-1 text-muted"></i>
+        <h5 class="mt-3">No hay facturas de compra</h5>
+        <p class="text-muted mb-3">
+          No se encontraron facturas de compra para {{ mes|stringformat:"02d" }}/{{ anio }}.
+        </p>
+        <a href="{% url 'contabilidad:factura_fiscal_nueva' %}?tipo=COMPRA"
+           class="btn btn-primary btn-sm">
+          <i class="bi bi-plus-circle"></i> Registrar factura de compra
+        </a>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

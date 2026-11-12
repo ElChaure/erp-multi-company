@@ -1,0 +1,101 @@
+{% extends "rrhh/base.html" %}
+
+{% block title %}Eliminar cargo - RRHH System{% endblock %}
+
+{% block content %}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-exclamation-triangle-fill"></i> Confirmar eliminación
+                </h5>
+            </div>
+            <div class="card-body">
+
+                <p class="mb-4">
+                    Estás a punto de eliminar permanentemente este cargo.
+                    <strong>Esta acción no se puede deshacer.</strong>
+                </p>
+
+                <div class="d-flex align-items-center gap-3 p-3 bg-light rounded mb-4">
+                    <div class="cargo-danger-icon"><i class="bi bi-briefcase"></i></div>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">{{ cargo.nombre }}</div>
+                        <div class="text-muted small font-monospace">{{ cargo.codigo }}</div>
+                    </div>
+                </div>
+
+                {% if empleados_count > 0 %}
+                    <div class="alert alert-danger">
+                        <h6 class="alert-heading mb-2">
+                            <i class="bi bi-x-octagon"></i> No se puede eliminar
+                        </h6>
+                        <p class="mb-2">
+                            Este cargo tiene <strong>{{ empleados_count }}</strong> empleado(s) asignado(s).
+                        </p>
+                        <p class="mb-0 small">
+                            Reasigna a los empleados a otro cargo, o
+                            <strong>desactiva</strong> este cargo en su lugar.
+                        </p>
+                    </div>
+                {% endif %}
+
+                <div class="mb-4">
+                    <h6 class="text-uppercase text-muted small mb-2">Se eliminará:</h6>
+                    <ul class="list-unstyled mb-0 small">
+                        <li class="mb-1">
+                            <i class="bi bi-x-circle text-danger"></i>
+                            El registro del cargo
+                        </li>
+                        <li>
+                            <i class="bi bi-x-circle text-danger"></i>
+                            Referencias históricas
+                        </li>
+                    </ul>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-between gap-2">
+                        <a href="{% url 'rrhh:cargo_lista' %}" class="btn btn-outline-secondary flex-fill">
+                            <i class="bi bi-arrow-left"></i> Cancelar
+                        </a>
+                        <button type="submit"
+                                class="btn btn-danger flex-fill"
+                                {% if empleados_count > 0 %}disabled{% endif %}
+                                onclick="return confirm('¿Estás completamente seguro?')">
+                            <i class="bi bi-trash"></i> Sí, eliminar
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+            <div class="card-footer bg-white text-muted small">
+                <i class="bi bi-shield-exclamation"></i>
+                Esta acción quedará registrada en el log de auditoría.
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    .cargo-danger-icon {
+        display: inline-flex;
+        width: 52px;
+        height: 52px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+        color: #fff;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        flex-shrink: 0;
+    }
+    .card.border-danger { border-width: 2px; }
+</style>
+
+{% endblock %}

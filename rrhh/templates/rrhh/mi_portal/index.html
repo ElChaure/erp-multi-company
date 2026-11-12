@@ -1,0 +1,880 @@
+{% extends "rrhh/base.html" %}
+
+{% block title %}Mi portal - RRHH{% endblock %}
+
+{% block content %}
+
+{# ═══════════════════════════════════════════════════════════ #}
+{#  HEADER                                                    #}
+{# ═══════════════════════════════════════════════════════════ #}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h1 class="mb-1">Mi portal</h1>
+        <p class="text-muted mb-0 small">
+            Consulta tus recibos de pago, saldos y datos personales
+        </p>
+    </div>
+</div>
+
+{% if not tiene_ficha %}
+
+    {# ───────── Sin ficha de empleado ───────── #}
+    <div class="alert alert-info d-flex align-items-center" role="alert">
+        <i class="bi bi-info-circle-fill me-2 fs-4"></i>
+        <div>
+            <strong>Tu usuario no está vinculado a una ficha de empleado.</strong>
+            <div class="small mt-1">
+                Si eres empleado y necesitas acceder a tus recibos, contacta a RRHH
+                para que vinculen tu usuario.
+            </div>
+        </div>
+    </div>
+
+{% else %}
+
+    {# ═══════════════════════════════════════════════════════ #}
+    {#  TABS: Recibos / Vacaciones / Mis datos                #}
+    {# ═══════════════════════════════════════════════════════ #}
+
+    <ul class="nav nav-tabs mb-3" id="portalTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-recibos-btn"
+                    data-bs-toggle="tab" data-bs-target="#tab-recibos"
+                    type="button" role="tab">
+                <i class="bi bi-receipt"></i> Mis recibos
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-vacaciones-btn"
+                    data-bs-toggle="tab" data-bs-target="#tab-vacaciones"
+                    type="button" role="tab">
+                <i class="bi bi-sun"></i> Mis vacaciones
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-datos-btn"
+                    data-bs-toggle="tab" data-bs-target="#tab-datos"
+                    type="button" role="tab">
+                <i class="bi bi-person"></i> Mis datos
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="portalTabsContent">
+
+        {# ═══════ TAB: MIS RECIBOS ═══════ #}
+        <div class="tab-pane fade show active" id="tab-recibos" role="tabpanel">
+            <div class="card">
+                <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h6 class="mb-0">
+                        <i class="bi bi-receipt text-primary"></i>
+                        Recibos de pago
+                    </h6>
+                    <div class="d-flex align-items-center gap-2">
+                        <label for="filtro-anio" class="text-muted small mb-0">Año:</label>
+                        <select id="filtro-anio" class="form-select form-select-sm" style="min-width: 120px;">
+                            <option value="">Todos</option>
+                            {# Se poblará con JS #}
+                        </select>
+                        <button class="btn btn-sm btn-outline-secondary" id="btn-refresh-recibos" title="Recargar">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-body p-0">
+                    <div id="recibos-loading" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando…</span>
+                        </div>
+                        <p class="text-muted mt-3 mb-0">Cargando tus recibos…</p>
+                    </div>
+
+                    <div id="recibos-error" class="alert alert-danger d-none m-3" role="alert">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <span id="recibos-error-message"></span>
+                    </div>
+
+                    <div id="recibos-empty" class="text-center text-muted py-5 d-none">
+                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                        <p class="mb-0">Aún no tienes recibos disponibles</p>
+                        <small>Cuando tu empresa procese la nómina, aparecerán aquí.</small>
+                    </div>
+
+                    <div class="table-responsive d-none" id="recibos-table-wrapper">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Periodo</th>
+                                    <th>Fechas</th>
+                                    <th class="text-end">Percepciones</th>
+                                    <th class="text-end">Deducciones</th>
+                                    <th class="text-end">Neto pagado</th>
+                                    <th>Estado</th>
+                                    <th style="width: 100px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="recibos-tbody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card-footer bg-white d-none" id="recibos-pagination-wrapper">
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0 justify-content-center" id="recibos-pagination">
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+
+        {# ═══════ TAB: MIS VACACIONES ═══════ #}
+        <div class="tab-pane fade" id="tab-vacaciones" role="tabpanel">
+
+            {# ─── Filtro de año + botón refrescar ─── #}
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <h5 class="mb-0">
+                    <i class="bi bi-sun text-warning"></i>
+                    Mi saldo de vacaciones
+                </h5>
+                <div class="d-flex align-items-center gap-2">
+                    <label for="filtro-anio-vac" class="text-muted small mb-0">Año:</label>
+                    <select id="filtro-anio-vac" class="form-select form-select-sm" style="min-width: 120px;">
+                        <option value="">Todos</option>
+                    </select>
+                    <button class="btn btn-sm btn-outline-secondary" id="btn-refresh-vac" title="Recargar">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+            </div>
+
+            {# ─── Loading / Error / Empty ─── #}
+            <div id="vac-loading" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="text-muted mt-3 mb-0">Cargando saldo…</p>
+            </div>
+
+            <div id="vac-error" class="alert alert-danger d-none"></div>
+
+            <div id="vac-empty" class="text-center text-muted py-5 d-none">
+                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                <p class="mb-0">No tienes saldos de vacaciones registrados</p>
+                <small>Contacta a RRHH si crees que es un error</small>
+            </div>
+
+            {# ─── Card principal del saldo actual ─── #}
+            <div class="row g-3 mb-4 d-none" id="vac-saldo-card">
+                <div class="col-lg-4">
+                    <div class="card border-warning h-100">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted text-uppercase small mb-3">Días disponibles</h6>
+                            <div class="display-3 fw-bold text-warning" id="vac-disponibles">—</div>
+                            <small class="text-muted">año <span id="vac-anio-actual">—</span></small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-8">
+                    <div class="row g-3 h-100">
+                        <div class="col-6 col-md-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-award text-primary fs-3 d-block mb-2"></i>
+                                    <small class="text-muted d-block">Derecho</small>
+                                    <h4 class="mb-0" id="vac-derecho">—</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-check-circle text-success fs-3 d-block mb-2"></i>
+                                    <small class="text-muted d-block">Tomados</small>
+                                    <h4 class="mb-0 text-success" id="vac-tomados">—</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-cash text-info fs-3 d-block mb-2"></i>
+                                    <small class="text-muted d-block">Pagados</small>
+                                    <h4 class="mb-0 text-info" id="vac-pagados">—</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-sliders text-secondary fs-3 d-block mb-2"></i>
+                                    <small class="text-muted d-block">Ajustes</small>
+                                    <h4 class="mb-0" id="vac-ajustes">—</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {# Barra de progreso #}
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between small text-muted mb-1">
+                            <span>Uso del saldo</span>
+                            <span id="vac-uso-pct">—</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-warning" id="vac-progress-bar"
+                                 role="progressbar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# ─── Botón solicitar ─── #}
+            <div class="d-flex justify-content-end mb-3 d-none" id="vac-actions">
+                <a href="{% url 'rrhh:solicitud_nueva' %}" class="btn btn-sm btn-warning">
+                    <i class="bi bi-plus-circle"></i> Solicitar vacaciones
+                </a>
+            </div>
+			
+			{# ─── Acceso rápido a mis solicitudes ─── #}
+            <div class="mb-3 text-end">
+                <a href="{% url 'rrhh:solicitud_mis' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-inbox"></i> Ver mis solicitudes
+                </a>
+            </div>
+
+
+            {# ─── Historial de movimientos ─── #}
+            <div class="card d-none" id="vac-historial-card">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-clock-history text-secondary"></i>
+                        Historial de movimientos
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 130px;">Fecha</th>
+                                    <th style="width: 140px;">Tipo</th>
+                                    <th class="text-center" style="width: 80px;">Días</th>
+                                    <th class="text-center" style="width: 110px;">Saldo después</th>
+                                    <th>Motivo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vac-historial-tbody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer bg-white d-none" id="vac-historial-pagination">
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0 justify-content-center"
+                            id="vac-historial-pagination-list"></ul>
+                    </nav>
+                </div>
+            </div>
+
+        </div>
+
+        {# ═══════ TAB: MIS DATOS ═══════ #}
+        <div class="tab-pane fade" id="tab-datos" role="tabpanel">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-person text-primary"></i>
+                        Datos del empleado
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-5">Número de empleado</dt>
+                                <dd class="col-sm-7">{{ empleado.numero_empleado }}</dd>
+
+                                <dt class="col-sm-5">Nombre completo</dt>
+                                <dd class="col-sm-7">{{ empleado.nombre_completo }}</dd>
+
+                                <dt class="col-sm-5">Cédula</dt>
+                                <dd class="col-sm-7">{{ empleado.cedula_completa }}</dd>
+
+                                <dt class="col-sm-5">Email</dt>
+                                <dd class="col-sm-7">{{ empleado.email|default:"—" }}</dd>
+
+                                <dt class="col-sm-5">Teléfono</dt>
+                                <dd class="col-sm-7">{{ empleado.telefono|default:"—" }}</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-5">Cargo</dt>
+                                <dd class="col-sm-7">{{ empleado.cargo.nombre|default:"—" }}</dd>
+
+                                <dt class="col-sm-5">Departamento</dt>
+                                <dd class="col-sm-7">{{ empleado.departamento.nombre|default:"—" }}</dd>
+
+                                <dt class="col-sm-5">Sede</dt>
+                                <dd class="col-sm-7">{{ empleado.sede.nombre|default:"—" }}</dd>
+
+                                <dt class="col-sm-5">Fecha de ingreso</dt>
+                                <dd class="col-sm-7">{{ empleado.fecha_ingreso|date:"d/m/Y" }}</dd>
+
+                                <dt class="col-sm-5">Estatus</dt>
+                                <dd class="col-sm-7">
+                                    <span class="badge bg-success">{{ empleado.get_estatus_display }}</span>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-white text-end">
+                    <a href="{% url 'rrhh:perfil' %}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-pencil"></i> Editar mis datos de usuario
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+{% endif %}
+
+{# ═══════════════════════════════════════════════════════════ #}
+{#  JS DEL PORTAL                                             #}
+{# ═══════════════════════════════════════════════════════════ #}
+{% if tiene_ficha %}
+<script>
+(function () {
+    "use strict";
+
+    const API_MIS_RECIBOS = "/api/v1/nomina/nominas/mis-recibos/";
+    const API_MIS_ANIOS   = "/api/v1/nomina/nominas/mis-anios/";
+    const API_RECIBO_PDF  = (id) => `/api/v1/nomina/nominas/${id}/recibo/`;
+
+    const state = {
+        anio: "",
+        page: 1,
+        pageSize: 10,
+        totalPages: 1,
+    };
+
+    // ═══════════════════════════════════════════════════════════
+    //  HELPERS
+    // ═══════════════════════════════════════════════════════════
+
+    function fmtMoney(n) {
+        if (n === null || n === undefined) return "—";
+        return "Bs. " + new Intl.NumberFormat("es-VE", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(n);
+    }
+
+    function fmtDate(iso) {
+        if (!iso) return "—";
+        try {
+            const d = new Date(iso + "T00:00:00");
+            return d.toLocaleDateString("es-VE", {
+                day: "2-digit", month: "short", year: "numeric",
+            });
+        } catch { return iso; }
+    }
+
+    function escapeHtml(s) {
+        if (s === null || s === undefined) return "";
+        return String(s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+	function setText(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    }
+
+    function fmtDateTime(iso) {
+        if (!iso) return "—";
+        try {
+            const d = new Date(iso);
+            return d.toLocaleString("es-VE", {
+                day: "2-digit", month: "short",
+                hour: "2-digit", minute: "2-digit",
+            });
+        } catch { return iso; }
+    }
+
+    function escapeHtml(s) {
+        if (s === null || s === undefined) return "";
+        return String(s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  CARGA DE AÑOS DISPONIBLES
+    // ═══════════════════════════════════════════════════════════
+
+    async function loadAnios() {
+        try {
+            const res = await fetch(API_MIS_ANIOS, {
+                credentials: "same-origin",
+                headers: { "Accept": "application/json" },
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+
+            const select = document.getElementById("filtro-anio");
+            if (!select) return;
+
+            (data.anios || []).forEach((a) => {
+                const opt = document.createElement("option");
+                opt.value = a;
+                opt.textContent = a;
+                select.appendChild(opt);
+            });
+        } catch (err) {
+            console.warn("No se pudieron cargar los años disponibles", err);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  CARGA DE RECIBOS
+    // ═══════════════════════════════════════════════════════════
+
+    async function loadRecibos() {
+        showLoading();
+
+        try {
+            const params = new URLSearchParams();
+            if (state.anio) params.set("anio", state.anio);
+            params.set("page", String(state.page));
+
+            const res = await fetch(`${API_MIS_RECIBOS}?${params.toString()}`, {
+                credentials: "same-origin",
+                headers: { "Accept": "application/json" },
+            });
+
+            if (!res.ok) {
+                if (res.status === 404) {
+                    showEmpty("Tu usuario no está vinculado a una ficha de empleado.");
+                    return;
+                }
+                throw new Error(`HTTP ${res.status}`);
+            }
+
+            const data = await res.json();
+            renderRecibos(data);
+
+        } catch (err) {
+            console.error(err);
+            showError(err.message);
+        }
+    }
+
+    function renderRecibos(data) {
+        const items = data.results || data || [];
+        const count = data.count || items.length;
+        const next = data.next;
+        const previous = data.previous;
+
+        if (items.length === 0) {
+            showEmpty();
+            return;
+        }
+
+        const tbody = document.getElementById("recibos-tbody");
+        tbody.innerHTML = "";
+
+        items.forEach((r) => {
+            const tr = document.createElement("tr");
+
+            const periodoLabel = `${r.periodo_tipo_display} #${r.periodo_numero}`;
+            const fechas = `${fmtDate(r.fecha_inicio)} → ${fmtDate(r.fecha_fin)}`;
+
+            tr.innerHTML =
+                '<td class="fw-semibold">' + escapeHtml(periodoLabel) + '</td>' +
+                '<td class="text-muted small">' + fechas + '</td>' +
+                '<td class="text-end">' + fmtMoney(r.total_percepciones) + '</td>' +
+                '<td class="text-end text-danger">' + fmtMoney(r.total_deducciones) + '</td>' +
+                '<td class="text-end fw-bold text-success">' + fmtMoney(r.neto_pagar) + '</td>' +
+                '<td><span class="badge bg-success-subtle text-success">' +
+                    escapeHtml(r.periodo_estatus_display) +
+                '</span></td>' +
+                '<td class="text-end">' +
+                    '<a href="' + API_RECIBO_PDF(r.id) + '" target="_blank" rel="noopener" ' +
+                       'class="btn btn-sm btn-primary" title="Ver recibo en PDF">' +
+                        '<i class="bi bi-file-earmark-pdf"></i> Ver' +
+                    '</a>' +
+                '</td>';
+
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById("recibos-table-wrapper").classList.remove("d-none");
+        document.getElementById("recibos-loading").classList.add("d-none");
+        document.getElementById("recibos-error").classList.add("d-none");
+        document.getElementById("recibos-empty").classList.add("d-none");
+
+        renderPagination(data);
+    }
+
+    function renderPagination(data) {
+        const total = data.count || 0;
+        const pageSize = 10;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+        state.totalPages = totalPages;
+
+        const wrapper = document.getElementById("recibos-pagination-wrapper");
+        const ul = document.getElementById("recibos-pagination");
+
+        if (totalPages <= 1) {
+            wrapper.classList.add("d-none");
+            return;
+        }
+
+        wrapper.classList.remove("d-none");
+        ul.innerHTML = "";
+
+        const mkItem = (label, pageNum, disabled, active) => {
+            const li = document.createElement("li");
+            li.className = "page-item" + (disabled ? " disabled" : "") + (active ? " active" : "");
+            const a = document.createElement("a");
+            a.className = "page-link";
+            a.href = "#";
+            a.textContent = label;
+            a.addEventListener("click", (e) => {
+                e.preventDefault();
+                if (disabled || active) return;
+                state.page = pageNum;
+                loadRecibos();
+            });
+            li.appendChild(a);
+            return li;
+        };
+
+        ul.appendChild(mkItem("«", state.page - 1, state.page <= 1, false));
+
+        // Ventana de páginas
+        const start = Math.max(1, state.page - 2);
+        const end = Math.min(totalPages, state.page + 2);
+
+        for (let i = start; i <= end; i++) {
+            ul.appendChild(mkItem(String(i), i, false, i === state.page));
+        }
+
+        ul.appendChild(mkItem("»", state.page + 1, state.page >= totalPages, false));
+    }
+
+    function showLoading() {
+        document.getElementById("recibos-loading").classList.remove("d-none");
+        document.getElementById("recibos-error").classList.add("d-none");
+        document.getElementById("recibos-empty").classList.add("d-none");
+        document.getElementById("recibos-table-wrapper").classList.add("d-none");
+        document.getElementById("recibos-pagination-wrapper").classList.add("d-none");
+    }
+
+    function showError(msg) {
+        document.getElementById("recibos-loading").classList.add("d-none");
+        document.getElementById("recibos-table-wrapper").classList.add("d-none");
+        document.getElementById("recibos-empty").classList.add("d-none");
+        document.getElementById("recibos-pagination-wrapper").classList.add("d-none");
+
+        document.getElementById("recibos-error-message").textContent =
+            msg || "Error al cargar los recibos.";
+        document.getElementById("recibos-error").classList.remove("d-none");
+    }
+
+    function showEmpty(msg) {
+        document.getElementById("recibos-loading").classList.add("d-none");
+        document.getElementById("recibos-error").classList.add("d-none");
+        document.getElementById("recibos-table-wrapper").classList.add("d-none");
+        document.getElementById("recibos-pagination-wrapper").classList.add("d-none");
+
+        const empty = document.getElementById("recibos-empty");
+        if (msg) {
+            empty.querySelector("p").textContent = msg;
+            empty.querySelector("small").textContent = "";
+        }
+        empty.classList.remove("d-none");
+    }
+	
+	// ═══════════════════════════════════════════════════════════
+    //  MIS VACACIONES
+    // ═══════════════════════════════════════════════════════════
+
+    const API_MIS_SALDOS = "/api/v1/ausencias/saldos/mis-saldos/";
+    const API_MIS_MOVIMIENTOS = "/api/v1/ausencias/movimientos/mis-movimientos/";
+    const API_MIS_ANIOS_VAC = "/api/v1/ausencias/saldos/mis-anios/";
+
+    const stateVac = {
+        anio: "",
+        page: 1,
+    };
+
+    async function loadAniosVacaciones() {
+        try {
+            const res = await fetch(API_MIS_ANIOS_VAC, {
+                credentials: "same-origin",
+                headers: { "Accept": "application/json" },
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+
+            const select = document.getElementById("filtro-anio-vac");
+            if (!select) return;
+
+            (data.anios || []).forEach((a) => {
+                const opt = document.createElement("option");
+                opt.value = a;
+                opt.textContent = a;
+                select.appendChild(opt);
+            });
+
+            // Pre-seleccionar el año más reciente
+            if (data.anios && data.anios.length > 0) {
+                stateVac.anio = String(data.anios[0]);
+                select.value = stateVac.anio;
+            }
+        } catch (err) {
+            console.warn("No se pudieron cargar los años de vacaciones", err);
+        }
+    }
+
+    async function loadSaldoVacaciones() {
+        const loadingEl = document.getElementById("vac-loading");
+        const errorEl = document.getElementById("vac-error");
+        const emptyEl = document.getElementById("vac-empty");
+        const cardEl = document.getElementById("vac-saldo-card");
+        const actionsEl = document.getElementById("vac-actions");
+        const histEl = document.getElementById("vac-historial-card");
+
+        loadingEl.classList.remove("d-none");
+        errorEl.classList.add("d-none");
+        emptyEl.classList.add("d-none");
+        cardEl.classList.add("d-none");
+        actionsEl.classList.add("d-none");
+        histEl.classList.add("d-none");
+
+        try {
+            const params = new URLSearchParams();
+            if (stateVac.anio) params.set("anio", stateVac.anio);
+
+            const res = await fetch(`${API_MIS_SALDOS}?${params.toString()}`, {
+                credentials: "same-origin",
+                headers: { "Accept": "application/json" },
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            const saldos = await res.json();
+            loadingEl.classList.add("d-none");
+
+            if (!saldos || saldos.length === 0) {
+                emptyEl.classList.remove("d-none");
+                return;
+            }
+
+            renderSaldoVacaciones(saldos[0]);
+            cardEl.classList.remove("d-none");
+            actionsEl.classList.remove("d-none");
+            histEl.classList.remove("d-none");
+
+            // Cargar historial
+            stateVac.page = 1;
+            loadHistorialMovimientos();
+
+        } catch (err) {
+            loadingEl.classList.add("d-none");
+            errorEl.textContent = "Error al cargar tu saldo: " + err.message;
+            errorEl.classList.remove("d-none");
+        }
+    }
+
+    function renderSaldoVacaciones(saldo) {
+        const fmtDias = (n) => {
+            const num = parseFloat(n || 0);
+            return Number.isInteger(num) ? num : num.toFixed(2).replace(/\.?0+$/, "");
+        };
+
+        setText("vac-anio-actual", saldo.anio);
+        setText("vac-disponibles", fmtDias(saldo.dias_disponibles));
+        setText("vac-derecho", fmtDias(saldo.dias_derecho));
+        setText("vac-tomados", fmtDias(saldo.dias_tomados));
+        setText("vac-pagados", fmtDias(saldo.dias_pagados));
+        setText("vac-ajustes", fmtDias(saldo.dias_ajuste));
+
+        // Porcentaje de uso
+        const derecho = parseFloat(saldo.dias_derecho) || 0;
+        const tomados = parseFloat(saldo.dias_tomados) || 0;
+        const pagados = parseFloat(saldo.dias_pagados) || 0;
+        const usado = tomados + pagados;
+        const pct = derecho > 0 ? Math.min(100, (usado / derecho) * 100) : 0;
+
+        setText("vac-uso-pct", pct.toFixed(0) + "%");
+
+        const bar = document.getElementById("vac-progress-bar");
+        bar.style.width = pct + "%";
+        bar.className = "progress-bar " + (
+            pct >= 80 ? "bg-danger" :
+            pct >= 50 ? "bg-warning" : "bg-success"
+        );
+    }
+
+    async function loadHistorialMovimientos() {
+        const tbody = document.getElementById("vac-historial-tbody");
+        const pagWrapper = document.getElementById("vac-historial-pagination");
+        const pagList = document.getElementById("vac-historial-pagination-list");
+
+        tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center py-3">Cargando…</td></tr>';
+        pagWrapper.classList.add("d-none");
+
+        try {
+            const params = new URLSearchParams();
+            if (stateVac.anio) params.set("anio", stateVac.anio);
+            params.set("page", String(stateVac.page));
+
+            const res = await fetch(`${API_MIS_MOVIMIENTOS}?${params.toString()}`, {
+                credentials: "same-origin",
+                headers: { "Accept": "application/json" },
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            const data = await res.json();
+            const items = data.results || [];
+
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center py-4">Sin movimientos registrados</td></tr>';
+                return;
+            }
+
+            const tipoBadges = {
+                asignacion: "bg-info text-dark",
+                solicitud: "bg-warning text-dark",
+                ajuste: "bg-secondary",
+                pago: "bg-primary",
+                vencimiento: "bg-danger",
+            };
+
+            tbody.innerHTML = "";
+            items.forEach((m) => {
+                const badge = tipoBadges[m.tipo] || "bg-secondary";
+                const dias = parseFloat(m.dias || 0);
+                const diasTxt = (dias > 0 ? "+" : "") + dias.toFixed(2).replace(/\.?0+$/, "");
+                const diasCls = dias >= 0 ? "text-success" : "text-danger";
+
+                const tr = document.createElement("tr");
+                tr.innerHTML =
+                    '<td class="text-muted small">' + fmtDateTime(m.created_at) + '</td>' +
+                    '<td><span class="badge ' + badge + '">' + escapeHtml(m.tipo_display) + '</span></td>' +
+                    '<td class="text-center fw-semibold ' + diasCls + '">' + diasTxt + '</td>' +
+                    '<td class="text-center small">' + parseFloat(m.saldo_nuevo).toFixed(2).replace(/\.?0+$/, "") + '</td>' +
+                    '<td class="small text-muted">' + escapeHtml(m.motivo || '—') + '</td>';
+                tbody.appendChild(tr);
+            });
+
+            // Paginación
+            const totalPages = data.total_pages || 1;
+            if (totalPages > 1) {
+                pagWrapper.classList.remove("d-none");
+                pagList.innerHTML = "";
+
+                const mkItem = (label, pageNum, disabled, active) => {
+                    const li = document.createElement("li");
+                    li.className = "page-item" + (disabled ? " disabled" : "") + (active ? " active" : "");
+                    const a = document.createElement("a");
+                    a.className = "page-link";
+                    a.href = "#";
+                    a.textContent = label;
+                    a.addEventListener("click", (e) => {
+                        e.preventDefault();
+                        if (disabled || active) return;
+                        stateVac.page = pageNum;
+                        loadHistorialMovimientos();
+                    });
+                    li.appendChild(a);
+                    return li;
+                };
+
+                pagList.appendChild(mkItem("«", stateVac.page - 1, stateVac.page <= 1, false));
+                const start = Math.max(1, stateVac.page - 2);
+                const end = Math.min(totalPages, stateVac.page + 2);
+                for (let i = start; i <= end; i++) {
+                    pagList.appendChild(mkItem(String(i), i, false, i === stateVac.page));
+                }
+                pagList.appendChild(mkItem("»", stateVac.page + 1, stateVac.page >= totalPages, false));
+            }
+
+        } catch (err) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-danger text-center py-3">Error al cargar el historial</td></tr>';
+        }
+    }
+
+    // Eventos del tab de vacaciones
+    const filtroAnioVac = document.getElementById("filtro-anio-vac");
+    if (filtroAnioVac) {
+        filtroAnioVac.addEventListener("change", (e) => {
+            stateVac.anio = e.target.value;
+            loadSaldoVacaciones();
+        });
+    }
+
+    document.getElementById("btn-refresh-vac")?.addEventListener("click", () => {
+        loadSaldoVacaciones();
+    });
+
+    // Cargar saldo al abrir el tab (lazy)
+    const tabVacBtn = document.getElementById("tab-vacaciones-btn");
+    if (tabVacBtn) {
+        tabVacBtn.addEventListener("shown.bs.tab", () => {
+            if (!stateVac.anio) {
+                loadAniosVacaciones().then(() => loadSaldoVacaciones());
+            } else {
+                loadSaldoVacaciones();
+            }
+        });
+    }
+	
+
+    // ═══════════════════════════════════════════════════════════
+    //  EVENTOS
+    // ═══════════════════════════════════════════════════════════
+
+    const filtroAnio = document.getElementById("filtro-anio");
+    if (filtroAnio) {
+        filtroAnio.addEventListener("change", (e) => {
+            state.anio = e.target.value;
+            state.page = 1;
+            loadRecibos();
+        });
+    }
+
+    document.getElementById("btn-refresh-recibos")?.addEventListener("click", () => {
+        state.page = 1;
+        loadRecibos();
+    });
+
+    // ═══════════════════════════════════════════════════════════
+    //  INIT
+    // ═══════════════════════════════════════════════════════════
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        await loadAnios();
+        loadRecibos();
+    });
+
+})();
+</script>
+{% endif %}
+
+{% endblock %}

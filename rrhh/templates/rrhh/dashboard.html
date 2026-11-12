@@ -1,0 +1,1112 @@
+{% extends "rrhh/base.html" %}
+
+{% block title %}Dashboard - RRHH{% endblock %}
+
+{% block content %}
+
+{# ═══════════════════════════════════════════════════════════ #}
+{#  HEADER CON FILTROS Y ACCIONES                             #}
+{# ═══════════════════════════════════════════════════════════ #}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h1 class="mb-1">Dashboard</h1>
+        <p class="text-muted mb-0 small">
+            Bienvenido, <strong>{{ user.get_full_name|default:user.username }}</strong>
+            {% if user.perfil.empresa %}
+                · {{ user.perfil.empresa.nombre_comercial|default:user.perfil.empresa.razon_social }}
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        {# Filtro empresa (solo superadmin) #}
+        {% if user.is_superuser or user.perfil.tiene_acceso_global %}
+        <div class="d-flex align-items-center gap-1">
+            <label for="filtro-empresa" class="text-muted small mb-0">Empresa:</label>
+            <select id="filtro-empresa" class="form-select form-select-sm" style="min-width: 180px;">
+                <option value="">Todas</option>
+                {# Se poblará vía JS #}
+            </select>
+        </div>
+        {% endif %}
+
+        {# Filtro meses #}
+        <div class="d-flex align-items-center gap-1">
+            <label for="filtro-meses" class="text-muted small mb-0">Evolución:</label>
+            <select id="filtro-meses" class="form-select form-select-sm" style="min-width: 110px;">
+                <option value="6">6 meses</option>
+                <option value="12" selected>12 meses</option>
+                <option value="24">24 meses</option>
+                <option value="36">36 meses</option>
+            </select>
+        </div>
+
+        {# Info de última actualización + auto-refresh #}
+        <div class="text-end border-start ps-3">
+            <small class="text-muted d-block">
+                Actualizado: <span id="last-update">—</span>
+            </small>
+            <small class="text-muted d-block" id="next-refresh-info" style="font-size: 11px;">
+                Próxima: <span id="countdown">—</span>
+            </small>
+        </div>
+
+        {# Botón exportar PDF #}
+        <a href="#" id="btn-export-pdf" class="btn btn-sm btn-outline-danger" title="Exportar a PDF">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </a>
+
+        {# Botón recargar #}
+        <button class="btn btn-sm btn-outline-secondary" id="btn-refresh" title="Recargar ahora">
+            <i class="bi bi-arrow-clockwise"></i>
+        </button>
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════ #}
+{#  ESTADOS: CARGA / ERROR                                    #}
+{# ═══════════════════════════════════════════════════════════ #}
+
+<div id="loading-state" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Cargando…</span>
+    </div>
+    <p class="text-muted mt-3 mb-0">Cargando dashboard…</p>
+</div>
+
+<div id="error-state" class="alert alert-danger d-none" role="alert">
+    <i class="bi bi-exclamation-triangle"></i>
+    <strong>Error al cargar el dashboard:</strong>
+    <span id="error-message"></span>
+    <button type="button" class="btn btn-sm btn-danger ms-2" onclick="location.reload()">
+        Reintentar
+    </button>
+</div>
+
+{# ═══════════════════════════════════════════════════════════ #}
+{#  DASHBOARD                                                 #}
+{# ═══════════════════════════════════════════════════════════ #}
+
+<div id="dashboard-content" class="d-none">
+
+    {# ───────── Bloque 1: KPIs principales ───────── #}
+    <div class="row g-3 mb-4">
+        <div class="col-md-6 col-lg">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted text-uppercase small mb-2">Total empleados</h6>
+                            <h2 class="display-6 mb-0" id="kpi-total">—</h2>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 text-primary rounded-3 p-3">
+                            <i class="bi bi-people-fill fs-4"></i>
+                        </div>
+                    </div>
+                    <small class="text-muted" id="kpi-total-hint">—</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted text-uppercase small mb-2">Activos</h6>
+                            <h2 class="display-6 mb-0 text-success" id="kpi-activos">—</h2>
+                        </div>
+                        <div class="bg-success bg-opacity-10 text-success rounded-3 p-3">
+                            <i class="bi bi-person-check-fill fs-4"></i>
+                        </div>
+                    </div>
+                    <small class="text-muted" id="kpi-activos-hint">—</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted text-uppercase small mb-2">Nuevos (mes)</h6>
+                            <h2 class="display-6 mb-0 text-info" id="kpi-nuevos">—</h2>
+                        </div>
+                        <div class="bg-info bg-opacity-10 text-info rounded-3 p-3">
+                            <i class="bi bi-person-plus-fill fs-4"></i>
+                        </div>
+                    </div>
+                    <small class="text-muted d-flex align-items-center gap-1" id="kpi-nuevos-hint">—</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted text-uppercase small mb-2">Bajas (mes)</h6>
+                            <h2 class="display-6 mb-0 text-danger" id="kpi-bajas">—</h2>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 text-danger rounded-3 p-3">
+                            <i class="bi bi-person-dash-fill fs-4"></i>
+                        </div>
+                    </div>
+                    <small class="text-muted d-flex align-items-center gap-1" id="kpi-bajas-hint">—</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted text-uppercase small mb-2">Rotación</h6>
+                            <h2 class="display-6 mb-0 text-warning" id="kpi-rotacion">—</h2>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 text-warning rounded-3 p-3">
+                            <i class="bi bi-arrow-repeat fs-4"></i>
+                        </div>
+                    </div>
+                    <small class="text-muted d-flex align-items-center gap-1" id="kpi-rotacion-hint">—</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ───────── Bloque 2: Gráficas principales ───────── #}
+    <div class="row g-3 mb-4">
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="bi bi-graph-up-arrow text-primary"></i>
+                        Evolución del costo de nómina
+                    </h6>
+                    <span class="badge bg-light text-dark" id="nomina-periodo-badge">—</span>
+                </div>
+                <div class="card-body">
+                    <canvas id="chart-nomina" height="90"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-diagram-3 text-success"></i>
+                        Empleados por estatus
+                    </h6>
+                </div>
+                <div class="card-body d-flex align-items-center justify-content-center">
+                    <canvas id="chart-estatus" height="220"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ───────── Bloque 3: Headcount + Ausencias ───────── #}
+    <div class="row g-3 mb-4">
+        <div class="col-lg-7">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-bar-chart-fill text-primary"></i>
+                        Headcount por departamento
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="chart-deptos" height="120"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-calendar-x text-warning"></i>
+                        Ausencias por tipo (12 meses)
+                    </h6>
+                </div>
+                <div class="card-body d-flex align-items-center justify-content-center">
+                    <canvas id="chart-ausencias" height="220"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ───────── Bloque 4: Último periodo de nómina ───────── #}
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="bi bi-cash-coin text-success"></i>
+                        Último periodo de nómina
+                    </h6>
+                    <span class="badge bg-light text-dark" id="ultimo-periodo-badge">—</span>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center g-3">
+                        <div class="col-md-3">
+                            <small class="text-muted d-block">Percepciones</small>
+                            <h4 class="mb-1" id="np-percepciones">—</h4>
+                            <small id="np-percepciones-delta"></small>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted d-block">Deducciones</small>
+                            <h4 class="mb-1 text-danger" id="np-deducciones">—</h4>
+                            <small id="np-deducciones-delta"></small>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted d-block">Neto pagado</small>
+                            <h4 class="mb-1 text-success" id="np-neto">—</h4>
+                            <small id="np-neto-delta"></small>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted d-block">Costo empresa</small>
+                            <h4 class="mb-1 text-primary" id="np-costo">—</h4>
+                            <small id="np-costo-delta"></small>
+                        </div>
+                    </div>
+                    <hr class="my-3">
+                    <div class="row text-center g-3">
+                        <div class="col-md-4">
+                            <small class="text-muted d-block">Aportes patronales</small>
+                            <h6 class="mb-0" id="np-aportes">—</h6>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted d-block">Empleados procesados</small>
+                            <h6 class="mb-0" id="np-empleados">—</h6>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted d-block">Fecha de pago</small>
+                            <h6 class="mb-0" id="np-fecha-pago">—</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ───────── Bloque 5: Alertas + Eventos ───────── #}
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+                        Alertas operativas
+                    </h6>
+                    <span class="badge bg-warning text-dark" id="alertas-count">0</span>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush" id="alertas-list">
+                        <li class="list-group-item text-muted text-center py-4">Cargando…</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-cake2 text-pink"></i>
+                        Próximos cumpleaños y aniversarios (30 días)
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush" id="eventos-list">
+                        <li class="list-group-item text-muted text-center py-4">Cargando…</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ───────── Bloque 6: Actividad reciente ───────── #}
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="bi bi-clock-history text-secondary"></i>
+                        Actividad reciente
+                    </h6>
+                    {% if user.perfil.es_rrhh %}
+                    <a href="/admin/rrhh_auditoria/auditoria/" class="btn btn-sm btn-outline-secondary">
+                        Ver todo
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 120px;">Fecha</th>
+                                    <th style="width: 140px;">Usuario</th>
+                                    <th style="width: 110px;">Acción</th>
+                                    <th style="width: 160px;">Registro</th>
+                                    <th>Descripción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="actividad-tbody">
+                                <tr>
+                                    <td colspan="5" class="text-muted text-center py-4">Cargando…</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ───────── Acciones rápidas ───────── #}
+    <div class="mt-4 mb-5">
+        <a href="{% url 'rrhh:empleado_crear' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Nuevo empleado
+        </a>
+        <a href="{% url 'rrhh:departamento_crear' %}" class="btn btn-outline-primary">
+            <i class="bi bi-plus-lg"></i> Nuevo departamento
+        </a>
+    </div>
+
+</div>
+
+{# ═══════════════════════════════════════════════════════════ #}
+{#  CHART.JS                                                  #}
+{# ═══════════════════════════════════════════════════════════ #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+{# ═══════════════════════════════════════════════════════════ #}
+{#  DASHBOARD JS                                              #}
+{# ═══════════════════════════════════════════════════════════ #}
+<script>
+(function () {
+    "use strict";
+
+    // ═══════════════════════════════════════════════════════════
+    //  CONFIGURACIÓN
+    // ═══════════════════════════════════════════════════════════
+
+    const API_RESUMEN = "/api/v1/dashboard/resumen/";
+    const API_EXPORT  = "/api/v1/dashboard/exportar/";
+    const API_EMPRESAS = "/api/v1/empresas/";
+
+    const REFRESH_INTERVAL_MS = 5 * 60 * 1000;  // 5 minutos
+
+    const COLORS = {
+        primary: "#2563eb",
+        success: "#16a34a",
+        danger:  "#dc2626",
+        warning: "#f59e0b",
+        info:    "#0ea5e9",
+        purple:  "#8b5cf6",
+        pink:    "#ec4899",
+        gray:    "#94a3b8",
+    };
+
+    const PALETTE = [
+        COLORS.primary, COLORS.success, COLORS.warning,
+        COLORS.danger, COLORS.info, COLORS.purple,
+        COLORS.pink, COLORS.gray,
+    ];
+
+    // Estado
+    const state = {
+        charts: {},
+        filtros: {
+            empresa: "",
+            meses: 12,
+        },
+        refreshTimer: null,
+        countdownTimer: null,
+        countdownRemaining: 0,
+        isLoading: false,
+    };
+
+    const isSuperAdmin = {{ user.is_superuser|yesno:"true,false" }} ||
+                         {{ user.perfil.tiene_acceso_global|yesno:"true,false" }};
+
+    // ═══════════════════════════════════════════════════════════
+    //  HELPERS
+    // ═══════════════════════════════════════════════════════════
+
+    function fmtNumber(n) {
+        if (n === null || n === undefined) return "—";
+        return new Intl.NumberFormat("es-VE").format(n);
+    }
+
+    function fmtMoney(n) {
+        if (n === null || n === undefined) return "—";
+        return "Bs. " + new Intl.NumberFormat("es-VE", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(n);
+    }
+
+    function fmtDate(iso) {
+        if (!iso) return "—";
+        try {
+            const d = new Date(iso);
+            return d.toLocaleDateString("es-VE", {
+                day: "2-digit", month: "short", year: "numeric",
+            });
+        } catch {
+            return iso;
+        }
+    }
+
+    function fmtDateTime(iso) {
+        if (!iso) return "—";
+        try {
+            const d = new Date(iso);
+            return d.toLocaleString("es-VE", {
+                day: "2-digit", month: "short",
+                hour: "2-digit", minute: "2-digit",
+            });
+        } catch {
+            return iso;
+        }
+    }
+
+    function setText(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    }
+
+    function setHtml(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = value;
+    }
+
+    function destroyChart(name) {
+        if (state.charts[name]) {
+            state.charts[name].destroy();
+            state.charts[name] = null;
+        }
+    }
+
+    function capitalize(s) {
+        if (!s) return "";
+        return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    function escapeHtml(s) {
+        if (s === null || s === undefined) return "";
+        return String(s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    /**
+     * Renderiza un delta (flecha + % con color).
+     * delta > 0 → verde (subida) | delta < 0 → rojo (bajada)
+     * invertirColor = true → rojo cuando sube, verde cuando baja
+     *   (útil para bajas, rotación, etc.)
+     */
+    function renderDelta(deltaPct, invertirColor = false) {
+        if (deltaPct === null || deltaPct === undefined) {
+            return '<span class="text-muted" style="font-size: 11px;">sin comparación</span>';
+        }
+
+        const abs = Math.abs(deltaPct).toFixed(1);
+        const isUp = deltaPct > 0;
+        const isZero = deltaPct === 0;
+
+        let icon = "bi-dash";
+        let cls = "text-muted";
+
+        if (!isZero) {
+            icon = isUp ? "bi-arrow-up" : "bi-arrow-down";
+            const isPositive = invertirColor ? !isUp : isUp;
+            cls = isPositive ? "text-success" : "text-danger";
+        }
+
+        const label = isZero ? "sin cambio" : `${abs}%`;
+
+        return `<span class="${cls}" style="font-size: 11px; font-weight: 600;">
+            <i class="bi ${icon}"></i> ${label}
+            <span class="text-muted fw-normal ms-1">vs mes anterior</span>
+        </span>`;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  CARGA DE DATOS
+    // ═══════════════════════════════════════════════════════════
+
+    async function loadEmpresas() {
+        if (!isSuperAdmin) return;
+
+        try {
+            const res = await fetch(API_EMPRESAS + "?page_size=100", {
+                credentials: "same-origin",
+                headers: { "Accept": "application/json" },
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            const empresas = data.results || data || [];
+
+            const select = document.getElementById("filtro-empresa");
+            if (!select) return;
+
+            // Conservar opción "Todas"
+            empresas.forEach((e) => {
+                const opt = document.createElement("option");
+                opt.value = e.id;
+                opt.textContent = e.nombre_comercial || e.razon_social;
+                select.appendChild(opt);
+            });
+        } catch (err) {
+            console.warn("No se pudieron cargar las empresas", err);
+        }
+    }
+
+    async function loadDashboard(opts = {}) {
+        if (state.isLoading) return;
+        state.isLoading = true;
+
+        const showSpinner = opts.showSpinner !== false;
+
+        if (showSpinner) {
+            document.getElementById("loading-state").classList.remove("d-none");
+            document.getElementById("dashboard-content").classList.add("d-none");
+        }
+        document.getElementById("error-state").classList.add("d-none");
+
+        try {
+            const params = new URLSearchParams();
+            if (state.filtros.empresa) params.set("empresa", state.filtros.empresa);
+            params.set("meses", String(state.filtros.meses));
+
+            const url = `${API_RESUMEN}?${params.toString()}`;
+
+            const res = await fetch(url, {
+                method: "GET",
+                credentials: "same-origin",
+                headers: {
+                    "Accept": "application/json",
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+            });
+
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status} - ${res.statusText}`);
+            }
+
+            const data = await res.json();
+            render(data);
+
+            document.getElementById("loading-state").classList.add("d-none");
+            document.getElementById("error-state").classList.add("d-none");
+            document.getElementById("dashboard-content").classList.remove("d-none");
+
+            const now = new Date();
+            setText("last-update", now.toLocaleTimeString("es-VE"));
+
+            // Reiniciar auto-refresh
+            resetAutoRefresh();
+
+        } catch (err) {
+            console.error(err);
+            if (showSpinner) {
+                document.getElementById("loading-state").classList.add("d-none");
+                document.getElementById("error-message").textContent = err.message;
+                document.getElementById("error-state").classList.remove("d-none");
+            }
+        } finally {
+            state.isLoading = false;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  AUTO-REFRESH
+    // ═══════════════════════════════════════════════════════════
+
+    function resetAutoRefresh() {
+        // Limpiar timers previos
+        if (state.refreshTimer) clearTimeout(state.refreshTimer);
+        if (state.countdownTimer) clearInterval(state.countdownTimer);
+
+        state.countdownRemaining = REFRESH_INTERVAL_MS / 1000;
+
+        // Actualizar cuenta regresiva cada segundo
+        state.countdownTimer = setInterval(() => {
+            if (document.hidden) return;  // pausar si la pestaña no está visible
+            state.countdownRemaining--;
+            if (state.countdownRemaining <= 0) {
+                state.countdownRemaining = REFRESH_INTERVAL_MS / 1000;
+            }
+            updateCountdownDisplay();
+        }, 1000);
+
+        // Programar recarga
+        state.refreshTimer = setTimeout(() => {
+            if (!document.hidden) {
+                loadDashboard({ showSpinner: false });
+            } else {
+                // Si la pestaña no está visible, reprogramamos 30s
+                state.refreshTimer = setTimeout(() => loadDashboard({ showSpinner: false }), 30000);
+            }
+        }, REFRESH_INTERVAL_MS);
+
+        updateCountdownDisplay();
+    }
+
+    function updateCountdownDisplay() {
+        const total = state.countdownRemaining;
+        const m = Math.floor(total / 60);
+        const s = total % 60;
+        setText("countdown", `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  RENDER
+    // ═══════════════════════════════════════════════════════════
+
+    function render(data) {
+        renderHeadcount(data.headcount);
+        renderNominaEvolucion(data.nomina);
+        renderUltimoPeriodo(data.nomina && data.nomina.ultimo_periodo);
+        renderChartDeptos(data.headcount_por_departamento);
+        renderChartAusencias(data.ausencias && data.ausencias.resumen);
+        renderAlertas(data.alertas);
+        renderEventos(data.proximos_eventos);
+        renderActividad(data.actividad_reciente);
+    }
+
+    function renderHeadcount(hc) {
+        if (!hc) return;
+
+        setText("kpi-total", fmtNumber(hc.total));
+        setText("kpi-total-hint", `${hc.licencias} en licencia · ${hc.vacaciones} de vacaciones`);
+
+        setText("kpi-activos", fmtNumber(hc.activos));
+        const pctActivos = hc.total > 0 ? Math.round((hc.activos / hc.total) * 100) : 0;
+        setText("kpi-activos-hint", `${pctActivos}% del total`);
+
+        setText("kpi-nuevos", "+" + fmtNumber(hc.nuevos_mes));
+        setHtml("kpi-nuevos-hint", renderDelta(hc.nuevos_mes_delta_pct, false));
+
+        setText("kpi-bajas", "-" + fmtNumber(hc.bajas_mes));
+        setHtml("kpi-bajas-hint", renderDelta(hc.bajas_mes_delta_pct, true));
+
+        setText("kpi-rotacion", hc.rotacion_pct + "%");
+        const rotDelta = hc.rotacion_pct_delta;
+        if (rotDelta !== undefined && rotDelta !== null) {
+            const isUp = rotDelta > 0;
+            const cls = rotDelta === 0 ? "text-muted" : (isUp ? "text-danger" : "text-success");
+            const icon = rotDelta === 0 ? "bi-dash" : (isUp ? "bi-arrow-up" : "bi-arrow-down");
+            const abs = Math.abs(rotDelta).toFixed(2);
+            setHtml("kpi-rotacion-hint",
+                `<span class="${cls}" style="font-size: 11px; font-weight: 600;">
+                    <i class="bi ${icon}"></i> ${abs} pts
+                    <span class="text-muted fw-normal ms-1">vs mes anterior</span>
+                </span>`
+            );
+        }
+
+        renderChartEstatus(hc.por_estatus);
+    }
+
+    function renderChartEstatus(porEstatus) {
+        destroyChart("estatus");
+        if (!porEstatus || porEstatus.length === 0) return;
+
+        const labels = porEstatus.map(x => capitalize(x.estatus));
+        const values = porEstatus.map(x => x.total);
+
+        const ctx = document.getElementById("chart-estatus");
+        state.charts.estatus = new Chart(ctx, {
+            type: "doughnut",
+            data: {
+                labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: PALETTE.slice(0, values.length),
+                    borderWidth: 2,
+                    borderColor: "#fff",
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: "bottom", labels: { boxWidth: 12, padding: 10 } },
+                },
+            },
+        });
+    }
+
+    function renderNominaEvolucion(nomina) {
+        if (!nomina || !nomina.evolucion) return;
+
+        const evol = nomina.evolucion;
+        const labels = evol.map(x => x.label);
+        const costos = evol.map(x => x.total_costo_empresa);
+        const netos  = evol.map(x => x.total_neto);
+
+        if (evol.length > 0) {
+            setText("nomina-periodo-badge", `${evol[0].label} → ${evol[evol.length - 1].label}`);
+        }
+
+        destroyChart("nomina");
+        const ctx = document.getElementById("chart-nomina");
+        state.charts.nomina = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: "Costo total empresa",
+                        data: costos,
+                        borderColor: COLORS.primary,
+                        backgroundColor: "rgba(37, 99, 235, 0.1)",
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                    },
+                    {
+                        label: "Neto pagado",
+                        data: netos,
+                        borderColor: COLORS.success,
+                        backgroundColor: "rgba(22, 163, 74, 0.05)",
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: "index", intersect: false },
+                plugins: {
+                    legend: { position: "top", align: "end", labels: { boxWidth: 12 } },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => `${ctx.dataset.label}: ${fmtMoney(ctx.parsed.y)}`,
+                        },
+                    },
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (v) => {
+                                if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + "M";
+                                if (v >= 1_000) return (v / 1_000).toFixed(0) + "K";
+                                return v;
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    function renderUltimoPeriodo(np) {
+        if (!np || !np.periodo) {
+            setText("ultimo-periodo-badge", "Sin datos");
+            return;
+        }
+
+        const p = np.periodo;
+        setText("ultimo-periodo-badge",
+            `${p.tipo_display} #${p.numero_periodo} · ${p.estatus_display}`);
+
+        setText("np-percepciones", fmtMoney(np.total_percepciones));
+        setText("np-deducciones", fmtMoney(np.total_deducciones));
+        setText("np-neto",        fmtMoney(np.total_neto));
+        setText("np-costo",       fmtMoney(np.total_costo_empresa));
+        setText("np-aportes",     fmtMoney(np.total_aportes_patronales));
+        setText("np-empleados",   fmtNumber(np.empleados_procesados));
+        setText("np-fecha-pago",  fmtDate(p.fecha_pago));
+
+        // Comparativas
+        const cmp = np.comparativas || {};
+        if (cmp.total_percepciones_delta_pct !== undefined) {
+            setHtml("np-percepciones-delta", renderDelta(cmp.total_percepciones_delta_pct, false));
+        }
+        if (cmp.total_deducciones_delta_pct !== undefined) {
+            setHtml("np-deducciones-delta", renderDelta(cmp.total_deducciones_delta_pct, true));
+        }
+        if (cmp.total_neto_delta_pct !== undefined) {
+            setHtml("np-neto-delta", renderDelta(cmp.total_neto_delta_pct, false));
+        }
+        if (cmp.total_costo_empresa_delta_pct !== undefined) {
+            setHtml("np-costo-delta", renderDelta(cmp.total_costo_empresa_delta_pct, true));
+        }
+    }
+
+    function renderChartDeptos(items) {
+        destroyChart("deptos");
+        if (!items || items.length === 0) return;
+
+        const top = items.slice(0, 10);
+        const labels = top.map(x => x.departamento);
+        const values = top.map(x => x.total);
+
+        const ctx = document.getElementById("chart-deptos");
+        state.charts.deptos = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels,
+                datasets: [{
+                    label: "Empleados",
+                    data: values,
+                    backgroundColor: COLORS.primary,
+                    borderRadius: 6,
+                }],
+            },
+            options: {
+                indexAxis: "y",
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, ticks: { precision: 0 } },
+                },
+            },
+        });
+    }
+
+    function renderChartAusencias(resumen) {
+        destroyChart("ausencias");
+        if (!resumen || !resumen.por_tipo || resumen.por_tipo.length === 0) {
+            const canvas = document.getElementById("chart-ausencias");
+            const parent = canvas.parentElement;
+            parent.innerHTML =
+                '<div class="text-center text-muted py-5">' +
+                '<i class="bi bi-inbox fs-1 d-block mb-2"></i>' +
+                'Sin ausencias registradas en los últimos 12 meses' +
+                '</div>';
+            return;
+        }
+
+        const labels = resumen.por_tipo.map(x => x.tipo);
+        const values = resumen.por_tipo.map(x => x.total);
+
+        const ctx = document.getElementById("chart-ausencias");
+        state.charts.ausencias = new Chart(ctx, {
+            type: "doughnut",
+            data: {
+                labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: PALETTE.slice(0, values.length),
+                    borderWidth: 2,
+                    borderColor: "#fff",
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: "bottom", labels: { boxWidth: 12, padding: 8 } },
+                },
+            },
+        });
+    }
+
+    function renderAlertas(alertas) {
+        const ul = document.getElementById("alertas-list");
+        ul.innerHTML = "";
+
+        const items = (alertas && alertas.items) || [];
+        setText("alertas-count", items.length);
+
+        if (items.length === 0) {
+            ul.innerHTML =
+                '<li class="list-group-item text-center text-muted py-4">' +
+                '<i class="bi bi-check-circle-fill text-success fs-3 d-block mb-2"></i>' +
+                'Todo en orden. Sin alertas pendientes.' +
+                '</li>';
+            return;
+        }
+
+        const nivelClasses = {
+            warning: { bg: "text-warning", badge: "bg-warning text-dark", icon: "bi-exclamation-triangle-fill" },
+            danger:  { bg: "text-danger",  badge: "bg-danger text-white",  icon: "bi-x-octagon-fill" },
+            info:    { bg: "text-info",    badge: "bg-info text-dark",     icon: "bi-info-circle-fill" },
+        };
+
+        items.forEach((a) => {
+            const n = nivelClasses[a.nivel] || nivelClasses.info;
+            const li = document.createElement("li");
+            li.className = "list-group-item d-flex justify-content-between align-items-center";
+            li.innerHTML =
+                '<div class="d-flex align-items-center gap-2">' +
+                    '<i class="bi ' + n.icon + ' ' + n.bg + '"></i>' +
+                    '<div>' +
+                        '<div class="fw-semibold small">' + escapeHtml(a.titulo) + '</div>' +
+                        '<div class="text-muted small">' + escapeHtml(a.descripcion) + '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<span class="badge ' + n.badge + ' rounded-pill">' + a.total + '</span>';
+            ul.appendChild(li);
+        });
+    }
+
+    function renderEventos(ev) {
+        const ul = document.getElementById("eventos-list");
+        ul.innerHTML = "";
+
+        const cumples = (ev && ev.cumpleanios) || [];
+        const anivs = (ev && ev.aniversarios) || [];
+
+        if (cumples.length === 0 && anivs.length === 0) {
+            ul.innerHTML =
+                '<li class="list-group-item text-center text-muted py-4">' +
+                '<i class="bi bi-calendar-x fs-3 d-block mb-2"></i>' +
+                'Sin eventos en los próximos 30 días' +
+                '</li>';
+            return;
+        }
+
+        cumples.forEach((c) => {
+            const li = document.createElement("li");
+            li.className = "list-group-item d-flex justify-content-between align-items-center";
+            li.innerHTML =
+                '<div class="d-flex align-items-center gap-2">' +
+                    '<i class="bi bi-cake2-fill text-pink"></i>' +
+                    '<div>' +
+                        '<div class="fw-semibold small">' + escapeHtml(c.empleado) + '</div>' +
+                        '<div class="text-muted small">Cumpleaños · ' + fmtDate(c.fecha) + '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<span class="badge bg-light text-dark">en ' + c.dias_faltantes + ' días</span>';
+            ul.appendChild(li);
+        });
+
+        anivs.forEach((a) => {
+            const li = document.createElement("li");
+            li.className = "list-group-item d-flex justify-content-between align-items-center";
+            li.innerHTML =
+                '<div class="d-flex align-items-center gap-2">' +
+                    '<i class="bi bi-trophy-fill text-warning"></i>' +
+                    '<div>' +
+                        '<div class="fw-semibold small">' + escapeHtml(a.empleado) + '</div>' +
+                        '<div class="text-muted small">' + a.anios + ' año(s) en la empresa · ' + fmtDate(a.fecha) + '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<span class="badge bg-light text-dark">en ' + a.dias_faltantes + ' días</span>';
+            ul.appendChild(li);
+        });
+    }
+
+    function renderActividad(act) {
+        const tbody = document.getElementById("actividad-tbody");
+        tbody.innerHTML = "";
+
+        const items = (act && act.items) || [];
+
+        if (items.length === 0) {
+            tbody.innerHTML =
+                '<tr><td colspan="5" class="text-center text-muted py-4">' +
+                '<i class="bi bi-inbox fs-3 d-block mb-2"></i>' +
+                'Sin actividad registrada' +
+                '</td></tr>';
+            return;
+        }
+
+        const accionBadges = {
+            create: "bg-success",
+            update: "bg-primary",
+            delete: "bg-danger",
+            login: "bg-info text-dark",
+            logout: "bg-secondary",
+            login_failed: "bg-warning text-dark",
+            export: "bg-purple",
+            view: "bg-light text-dark",
+            approve: "bg-success",
+            reject: "bg-danger",
+            cancel: "bg-secondary",
+        };
+
+        items.forEach((a) => {
+            const badge = accionBadges[a.accion] || "bg-secondary";
+            const tr = document.createElement("tr");
+            tr.innerHTML =
+                '<td class="text-muted small">' + fmtDateTime(a.fecha) + '</td>' +
+                '<td class="small">' + escapeHtml(a.usuario) + '</td>' +
+                '<td><span class="badge ' + badge + '">' + escapeHtml(a.accion_display || a.accion) + '</span></td>' +
+                '<td class="small text-muted">' + escapeHtml(a.tabla_display || a.tabla || '—') + '</td>' +
+                '<td class="small">' + escapeHtml(a.descripcion || '—') + '</td>';
+            tbody.appendChild(tr);
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  EVENTOS DE UI
+    // ═══════════════════════════════════════════════════════════
+
+    // Botón recargar
+    document.getElementById("btn-refresh").addEventListener("click", function () {
+        loadDashboard({ showSpinner: true });
+    });
+
+    // Filtro empresa
+    const selectEmpresa = document.getElementById("filtro-empresa");
+    if (selectEmpresa) {
+        selectEmpresa.addEventListener("change", function (e) {
+            state.filtros.empresa = e.target.value;
+            loadDashboard({ showSpinner: true });
+        });
+    }
+
+    // Filtro meses
+    const selectMeses = document.getElementById("filtro-meses");
+    if (selectMeses) {
+        selectMeses.addEventListener("change", function (e) {
+            state.filtros.meses = parseInt(e.target.value, 10) || 12;
+            loadDashboard({ showSpinner: false });
+        });
+    }
+
+    // Botón exportar PDF (respeta filtros actuales)
+    document.getElementById("btn-export-pdf").addEventListener("click", function (e) {
+        e.preventDefault();
+        const params = new URLSearchParams();
+        if (state.filtros.empresa) params.set("empresa", state.filtros.empresa);
+        const url = `${API_EXPORT}?${params.toString()}`;
+        window.open(url, "_blank");
+    });
+
+    // Pausar auto-refresh si la pestaña deja de estar visible
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+            setText("next-refresh-info", "");
+        } else {
+            // Al volver, forzamos recarga si ya pasó el intervalo
+            loadDashboard({ showSpinner: false });
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════════
+    //  INICIALIZACIÓN
+    // ═══════════════════════════════════════════════════════════
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        await loadEmpresas();
+        loadDashboard({ showSpinner: true });
+    });
+
+})();
+</script>
+
+{% endblock %}

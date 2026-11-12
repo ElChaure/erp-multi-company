@@ -1,0 +1,165 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Solicitar vacaciones - RRHH{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{% url 'rrhh:mi_portal' %}" class="text-muted small text-decoration-none">
+        <i class="bi bi-arrow-left"></i> Volver a mi portal
+    </a>
+    <h1 class="mb-1 mt-1">
+        <i class="bi bi-sun text-warning"></i>
+        Solicitar vacaciones
+    </h1>
+    <p class="text-muted mb-0 small">
+        {{ empleado.nombre_completo }} · {{ empleado.numero_empleado }}
+    </p>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" id="form-solicitud">
+                    {% csrf_token %}
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Fecha de inicio *</label>
+                            <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control"
+                                   required min="{{ fecha_minima|date:'Y-m-d' }}">
+                            <small class="text-muted">
+                                Debe ser al menos {{ config.dias_antelacion_solicitud }} días después de hoy.
+                            </small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Fecha de fin *</label>
+                            <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Días hábiles a solicitar</label>
+                        <div class="input-group">
+                            <input type="text" id="dias_calculados" class="form-control" readonly
+                                   placeholder="Se calcula automáticamente">
+                            <span class="input-group-text">
+                                <i class="bi bi-calendar-check"></i>
+                            </span>
+                        </div>
+                        <small class="text-muted">
+                            No cuentan sábados ni domingos.
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Motivo *</label>
+                        <textarea name="motivo" class="form-control" rows="3" required
+                                  placeholder="Ej: Descanso anual"></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-send"></i> Enviar solicitud
+                        </button>
+                        <a href="{% url 'rrhh:mi_portal' %}" class="btn btn-outline-secondary">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        {# Saldo actual #}
+        <div class="card mb-3">
+            <div class="card-body text-center">
+                <h6 class="text-muted text-uppercase small mb-2">Saldo actual</h6>
+                {% if saldo %}
+                <h2 class="mb-0 text-warning">{{ saldo.dias_pendientes|floatformat:0 }}</h2>
+                <small class="text-muted">días disponibles · año {{ saldo.anio }}</small>
+                {% else %}
+                <h2 class="mb-0 text-muted">—</h2>
+                <small class="text-muted">Sin saldo registrado</small>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Info #}
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6 class="small text-muted text-uppercase mb-3">
+                    <i class="bi bi-info-circle"></i>
+                    Información importante
+                </h6>
+                <ul class="small mb-0 ps-3">
+                    <li class="mb-2">
+                        Antelación mínima: <strong>{{ config.dias_antelacion_solicitud }} días</strong>
+                    </li>
+                    {% if config.aplica_contrato_colectivo %}
+                    <li class="mb-2">
+                        Se aplica el <strong>contrato colectivo</strong>
+                        ({{ config.nombre_contrato_colectivo|default:"sin nombre" }})
+                    </li>
+                    {% endif %}
+                    <li class="mb-2">
+                        La solicitud queda <strong>pendiente</strong> de aprobación.
+                    </li>
+                    <li class="mb-2">
+                        Al aprobarse, se descuentan los días del saldo.
+                    </li>
+                    <li>
+                        Podés solicitar en <strong>varios períodos</strong> durante el año.
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    "use strict";
+
+    const inputInicio = document.getElementById("fecha_inicio");
+    const inputFin = document.getElementById("fecha_fin");
+    const inputDias = document.getElementById("dias_calculados");
+
+    function calcularDiasHabiles(inicio, fin) {
+        if (!inicio || !fin) return 0;
+        const d1 = new Date(inicio + "T00:00:00");
+        const d2 = new Date(fin + "T00:00:00");
+        if (d1 > d2) return 0;
+
+        let dias = 0;
+        const actual = new Date(d1);
+        while (actual <= d2) {
+            const dow = actual.getDay(); // 0 = domingo, 6 = sábado
+            if (dow !== 0 && dow !== 6) dias++;
+            actual.setDate(actual.getDate() + 1);
+        }
+        return dias;
+    }
+
+    function recalcular() {
+        const inicio = inputInicio.value;
+        const fin = inputFin.value;
+        const dias = calcularDiasHabiles(inicio, fin);
+        inputDias.value = dias > 0 ? dias + " día(s) hábil(es)" : "";
+    }
+
+    inputInicio.addEventListener("change", () => {
+        if (inputInicio.value && !inputFin.value) {
+            inputFin.value = inputInicio.value;
+        }
+        if (inputFin.value && inputFin.value < inputInicio.value) {
+            inputFin.value = inputInicio.value;
+        }
+        inputFin.min = inputInicio.value;
+        recalcular();
+    });
+
+    inputFin.addEventListener("change", recalcular);
+})();
+</script>
+{% endblock %}

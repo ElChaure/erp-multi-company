@@ -1,0 +1,19 @@
+codigo,nombre,costo,residual,vida_util,cc,cuenta_activo,cuenta_gasto,cuenta_dep_acum,activo,total_depreciado,valor_libro
+AF-IMP-001,Concepta,25000.00,2500.00,10,CC-TECH - Producción / Tecnología,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,187.50,24812.50
+AF-IMP-002,Heidelberg Kord,85000.00,8500.00,15,CC-TECH - Producción / Tecnología,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,425.00,84575.00
+AF-IMP-003,Sakurai Oliver,45000.00,4500.00,10,CC-TECH - Producción / Tecnología,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,337.50,44662.50
+AF-IMP-004,Guillotina Morh,15000.00,1500.00,12,CC-TECH - Producción / Tecnología,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,93.75,14906.25
+AF-IMP-005,Troqueladora Automática,32000.00,3200.00,10,CC-TECH - Producción / Tecnología,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,240.00,31760.00
+AF-IMP-007,Laminadora de Plastificado,8000.00,800.00,8,CC-TECH - Producción / Tecnología,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,75.00,7925.00
+AF-IMP-008,Vehiculos y otros equipos,40000.00,8000.00,5,CC-ADMIN - Administración,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,533.33,39466.67
+AF-IMP-011,Heidelberg Gto,60000.00,6000.00,10,CC-TECH - Producción / Tecnología,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,0,60000.00
+AF-IMP-012,Roland Parva,50000.00,5000.00,10,CC-TECH - Producción / Tecnología,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,0,50000.00
+AF-IMP-013,Roland Rekord,120000.00,12000.00,15,CC-TECH - Producción / Tecnología,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,0,120000.00
+AF-IMP-014,Heidelberg Minerva 1/8,30000.00,3000.00,10,CC-TECH - Producción / Tecnología,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,0,30000.00
+AF-IMP-015,Heidelberg Cylinder,70000.00,7000.00,15,CC-TECH - Producción / Tecnología,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,0,70000.00
+AF-IMP-016,Alzadora Tigra,25000.00,2500.00,10,CC-TECH - Producción / Tecnología,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,0,25000.00
+AF-IMP-017,Muller Martini Grapadora,45000.00,4500.00,10,CC-TECH - Producción / Tecnología,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,0,45000.00
+AF-IMP-018,Dobladora Heidelberg Stamfolder,35000.00,3500.00,10,CC-TECH - Producción / Tecnología,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,0,35000.00
+AF-IMP-019,Cosedora Ventura,20000.00,2000.00,10,CC-TECH - Producción / Tecnología,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,0,20000.00
+AF-IMP-020,Empaquetadora Krause,15000.00,1500.00,10,CC-TECH - Producción / Tecnología,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,0,15000.00
+AF-IMP-021,Fotolito,18000.00,1800.00,8,CC-TECH - Producción / Tecnología,120101 - Maquinaria y Equipos,610202 - Gasto por Depreciación,120102 - Depreciación Acumulada,True,0,18000.00

@@ -1,0 +1,263 @@
+{% extends "rrhh/base.html" %}
+
+{% block title %}{{ empresa.razon_social }} - RRHH System{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div class="d-flex align-items-center gap-3">
+        <div class="empresa-avatar">
+            {% if empresa.logo %}
+                <img src="{{ empresa.logo.url }}" alt="{{ empresa.razon_social }}">
+            {% else %}
+                <i class="bi bi-building"></i>
+            {% endif %}
+        </div>
+        <div>
+            <h1 class="mb-1">{{ empresa.razon_social }}</h1>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <span class="badge bg-light text-dark font-monospace">{{ empresa.rif }}</span>
+                <span class="badge bg-primary-subtle text-primary">{{ empresa.get_tipo_display }}</span>
+                {% if empresa.activa %}
+                    <span class="badge bg-success">Activa</span>
+                {% else %}
+                    <span class="badge bg-secondary">Inactiva</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a href="{% url 'rrhh:empresa_lista' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+        {% if user.perfil.es_admin %}
+            <a href="{% url 'rrhh:empresa_editar' empresa.pk %}" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+            <a href="{% url 'rrhh:empresa_eliminar' empresa.pk %}" class="btn btn-outline-danger">
+                <i class="bi bi-trash"></i> Eliminar
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Columna izquierda -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 text-primary"><i class="bi bi-info-circle"></i> Información general</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0 detail-list">
+                    <dt class="col-sm-5">Razón social</dt>
+                    <dd class="col-sm-7">{{ empresa.razon_social }}</dd>
+
+                    <dt class="col-sm-5">Nombre comercial</dt>
+                    <dd class="col-sm-7">{{ empresa.nombre_comercial|default:"—" }}</dd>
+
+                    <dt class="col-sm-5">RIF</dt>
+                    <dd class="col-sm-7 font-monospace">{{ empresa.rif }}</dd>
+
+                    <dt class="col-sm-5">Tipo</dt>
+                    <dd class="col-sm-7">{{ empresa.get_tipo_display }}</dd>
+
+                    {% if empresa.padre %}
+                        <dt class="col-sm-5">Empresa matriz</dt>
+                        <dd class="col-sm-7">
+                            <a href="{% url 'rrhh:empresa_detalle' empresa.padre.pk %}">
+                                {{ empresa.padre.razon_social }}
+                            </a>
+                        </dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna derecha: contacto -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 text-primary"><i class="bi bi-telephone"></i> Contacto y dirección</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0 detail-list">
+                    <dt class="col-sm-5">Teléfono</dt>
+                    <dd class="col-sm-7">{{ empresa.telefono|default:"—" }}</dd>
+
+                    <dt class="col-sm-5">Email</dt>
+                    <dd class="col-sm-7">
+                        {% if empresa.email %}
+                            <a href="mailto:{{ empresa.email }}">{{ empresa.email }}</a>
+                        {% else %}—{% endif %}
+                    </dd>
+
+                    <dt class="col-sm-5">Sitio web</dt>
+                    <dd class="col-sm-7">
+                        {% if empresa.sitio_web %}
+                            <a href="{{ empresa.sitio_web }}" target="_blank">{{ empresa.sitio_web }}</a>
+                        {% else %}—{% endif %}
+                    </dd>
+
+                    <dt class="col-sm-5">Dirección</dt>
+                    <dd class="col-sm-7">{{ empresa.direccion|default:"—" }}</dd>
+
+                    <dt class="col-sm-5">Ciudad</dt>
+                    <dd class="col-sm-7">{{ empresa.ciudad|default:"—" }}, {{ empresa.estado|default:"" }}</dd>
+
+                    <dt class="col-sm-5">País</dt>
+                    <dd class="col-sm-7">{{ empresa.pais }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sedes -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 text-primary"><i class="bi bi-geo-alt"></i> Sedes ({{ sedes|length }})</h6>
+                {% if user.perfil.es_rrhh %}
+                    <a href="{% url 'rrhh:sede_crear' %}?empresa={{ empresa.pk }}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-lg"></i> Nueva sede
+                    </a>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                {% if sedes %}
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>Tipo</th>
+                                <th>Ciudad</th>
+                                <th class="text-center">Empleados</th>
+                                <th class="text-center">Estado</th>
+                                <th class="text-end"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sede in sedes %}
+                                <tr>
+                                    <td><span class="badge bg-light text-dark font-monospace">{{ sede.codigo }}</span></td>
+                                    <td>
+                                        <a href="{% url 'rrhh:sede_detalle' sede.pk %}" class="text-decoration-none">
+                                            {{ sede.nombre }}
+                                        </a>
+                                        {% if sede.es_principal %}
+                                            <span class="badge bg-warning text-dark ms-1">Principal</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ sede.get_tipo_display }}</td>
+                                    <td>{{ sede.ciudad|default:"—" }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info text-dark">{{ sede.empleados.count }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        {% if sede.activa %}
+                                            <span class="badge bg-success">Activa</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactiva</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{% url 'rrhh:sede_detalle' sede.pk %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-geo-alt" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">No hay sedes registradas.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Empleados recientes -->
+    {% if empleados_recientes %}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0 text-primary"><i class="bi bi-people"></i> Empleados recientes</h6>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Nombre</th>
+                                <th>Cédula</th>
+                                <th>Cargo</th>
+                                <th>Estatus</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for emp in empleados_recientes %}
+                                <tr>
+                                    <td><span class="badge bg-light text-dark font-monospace">{{ emp.numero_empleado }}</span></td>
+                                    <td>
+                                        <a href="{% url 'rrhh:empleado_detalle' emp.pk %}" class="text-decoration-none">
+                                            {{ emp.nombre_completo }}
+                                        </a>
+                                    </td>
+                                    <td class="font-monospace">{{ emp.cedula_completa }}</td>
+                                    <td>{{ emp.cargo.nombre|default:"—" }}</td>
+                                    <td>
+                                        {% if emp.estatus == "activo" %}
+                                            <span class="badge bg-success">Activo</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ emp.get_estatus_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    .empresa-avatar {
+        display: inline-flex;
+        width: 72px;
+        height: 72px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        color: #fff;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        flex-shrink: 0;
+        overflow: hidden;
+    }
+    .empresa-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .detail-list dt {
+        color: #6b7280;
+        font-weight: 500;
+        font-size: 0.9rem;
+        padding-bottom: 0.5rem;
+    }
+    .detail-list dd {
+        font-size: 0.95rem;
+        padding-bottom: 0.5rem;
+    }
+    .bg-primary-subtle { background-color: #dbeafe !important; }
+</style>
+
+{% endblock %}

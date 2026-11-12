@@ -1,0 +1,209 @@
+{% extends "rrhh/base.html" %}
+{% load l10n %}
+{% block title %}Nueva Factura Fiscal{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+
+  {# ═══════════════ ENCABEZADO ═══════════════ #}
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h4 class="mb-0">
+        <i class="bi bi-receipt text-primary"></i>
+        Nueva Factura Fiscal
+      </h4>
+      <small class="text-muted">{{ empresa.razon_social }}</small>
+    </div>
+    <a href="{% url 'contabilidad:factura_fiscal_lista' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left"></i> Volver
+    </a>
+  </div>
+
+  {% if not config_iva %}
+    <div class="alert alert-warning">
+      <i class="bi bi-exclamation-triangle"></i>
+      No hay configuración de IVA para la empresa.
+      <a href="/admin/contabilidad/configuracioniva/add/">Crear configuración</a>
+    </div>
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+
+    {# ═══════════════ DATOS DEL DOCUMENTO ═══════════════ #}
+    <div class="card shadow-sm mb-3">
+      <div class="card-header bg-white">
+        <strong><i class="bi bi-file-earmark-text"></i> Datos del documento</strong>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Tipo <span class="text-danger">*</span></label>
+            <select name="tipo" class="form-select form-select-sm" required>
+              <option value="">— Seleccionar —</option>
+              {% for valor, etiqueta in tipos %}
+                <option value="{{ valor }}"
+                  {% if request.GET.tipo == valor %}selected{% endif %}>
+                  {{ etiqueta }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Tipo de transacción</label>
+            <select name="tipo_transaccion" class="form-select form-select-sm">
+              <option value="NACIONAL">Nacional</option>
+              <option value="IMPORTACION">Importación</option>
+              <option value="EXPORTACION">Exportación</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Nº Factura <span class="text-danger">*</span></label>
+            <input type="text" name="numero_factura" class="form-control form-control-sm"
+                   placeholder="00000001" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Nº Control <span class="text-danger">*</span></label>
+            <input type="text" name="numero_control" class="form-control form-control-sm"
+                   placeholder="00-00000001" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Fecha emisión <span class="text-danger">*</span></label>
+            <input type="date" name="fecha_emision" class="form-control form-control-sm"
+                   value="{% now 'Y-m-d' %}" required>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ═══════════════ CONTRAPARTE ═══════════════ #}
+    <div class="card shadow-sm mb-3">
+      <div class="card-header bg-white">
+        <strong><i class="bi bi-person-badge"></i> Proveedor / Cliente</strong>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">RIF <span class="text-danger">*</span></label>
+            <input type="text" name="rif_contraparte" class="form-control form-control-sm"
+                   placeholder="J-12345678-9" required>
+          </div>
+          <div class="col-md-8">
+            <label class="form-label small fw-semibold">Razón social <span class="text-danger">*</span></label>
+            <input type="text" name="razon_social_contraparte" class="form-control form-control-sm"
+                   required>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ═══════════════ MONTOS ═══════════════ #}
+    <div class="card shadow-sm mb-3">
+      <div class="card-header bg-white">
+        <strong><i class="bi bi-calculator"></i> Montos</strong>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Base imponible <span class="text-danger">*</span></label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text">Bs.</span>
+              <input type="number" name="base_imponible" id="input-base"
+                     class="form-control" step="0.01" min="0" required>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Alícuota IVA</label>
+            <select name="alicuota_iva" id="select-alicuota" class="form-select form-select-sm">
+              {% for valor, etiqueta in alicuotas_sugeridas %}
+                <option value="{{ valor|unlocalize }}">{{ etiqueta }} ({{ valor }}%)</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Monto exento</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text">Bs.</span>
+              <input type="number" name="monto_exento" id="input-exento"
+                     class="form-control" step="0.01" min="0" value="0">
+            </div>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">IVA retenido</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text">Bs.</span>
+              <input type="number" name="iva_retenido" class="form-control"
+                     step="0.01" min="0" value="0">
+            </div>
+          </div>
+        </div>
+
+        {# Preview en vivo #}
+        <div class="alert alert-info mt-3 mb-0 py-2">
+          <div class="row">
+            <div class="col-md-4">
+              <strong>IVA calculado:</strong>
+              <span id="preview-iva">Bs. 0.00</span>
+            </div>
+            <div class="col-md-4">
+              <strong>Total:</strong>
+              <span id="preview-total">Bs. 0.00</span>
+            </div>
+            <div class="col-md-4">
+              <small class="text-muted">
+                <i class="bi bi-info-circle"></i>
+                IVA = Base × Alícuota. Total = Base + IVA + Exento.
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ═══════════════ BOTONES ═══════════════ #}
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-save"></i> Crear Factura
+      </button>
+      <a href="{% url 'contabilidad:factura_fiscal_lista' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-x-circle"></i> Cancelar
+      </a>
+    </div>
+  </form>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const inputBase = document.getElementById("input-base");
+  const inputExento = document.getElementById("input-exento");
+  const selectAlicuota = document.getElementById("select-alicuota");
+  const previewIva = document.getElementById("preview-iva");
+  const previewTotal = document.getElementById("preview-total");
+
+  function fmt(n) {
+    return n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function recalcular() {
+    const base = parseFloat(inputBase.value) || 0;
+    const exento = parseFloat(inputExento.value) || 0;
+    const alicuota = parseFloat(selectAlicuota.value) || 0;
+
+    const iva = base * alicuota / 100;
+    const total = base + iva + exento;
+
+    previewIva.textContent = "Bs. " + fmt(iva);
+    previewTotal.textContent = "Bs. " + fmt(total);
+  }
+
+  inputBase.addEventListener("input", recalcular);
+  inputExento.addEventListener("input", recalcular);
+  selectAlicuota.addEventListener("change", recalcular);
+
+  recalcular();
+})();
+</script>
+{% endblock %}

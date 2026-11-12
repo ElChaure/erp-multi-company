@@ -1,0 +1,164 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Factura {{ factura.numero_factura }}{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+
+  {# ═══════════════ ENCABEZADO ═══════════════ #}
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h4 class="mb-0">
+        {% if factura.tipo == "COMPRA" %}
+          <i class="bi bi-cart-check text-info"></i>
+        {% elif factura.tipo == "VENTA" %}
+          <i class="bi bi-cart-plus text-success"></i>
+        {% else %}
+          <i class="bi bi-file-earmark-text text-warning"></i>
+        {% endif %}
+        Factura {{ factura.numero_factura }}
+      </h4>
+      <small class="text-muted">
+        {{ factura.get_tipo_display }} · {{ factura.fecha_emision|date:"d/m/Y" }}
+        {% if factura.estado == "confirmada" %}
+          <span class="badge bg-success ms-2">Confirmada</span>
+        {% elif factura.estado == "borrador" %}
+          <span class="badge bg-warning text-dark ms-2">Borrador</span>
+        {% else %}
+          <span class="badge bg-secondary ms-2">Anulada</span>
+        {% endif %}
+      </small>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'contabilidad:factura_fiscal_lista' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+      </a>
+    </div>
+  </div>
+
+  {% if errores_validacion %}
+    <div class="alert alert-warning">
+      <strong><i class="bi bi-exclamation-triangle"></i> Datos incompletos:</strong>
+      <ul class="mb-0 mt-2">
+        {% for e in errores_validacion %}<li>{{ e }}</li>{% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <div class="row g-3">
+
+    {# ═══════════════ DATOS ═══════════════ #}
+    <div class="col-md-8">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white">
+          <strong><i class="bi bi-file-earmark-text"></i> Datos del documento</strong>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <small class="text-muted d-block">Tipo</small>
+              <strong>{{ factura.get_tipo_display }}</strong>
+            </div>
+            <div class="col-md-6">
+              <small class="text-muted d-block">Tipo de transacción</small>
+              <strong>{{ factura.get_tipo_transaccion_display|default:"—" }}</strong>
+            </div>
+            <div class="col-md-6">
+              <small class="text-muted d-block">Nº Factura</small>
+              <strong>{{ factura.numero_factura }}</strong>
+            </div>
+            <div class="col-md-6">
+              <small class="text-muted d-block">Nº Control</small>
+              <strong>{{ factura.numero_control }}</strong>
+            </div>
+            <div class="col-md-6">
+              <small class="text-muted d-block">Fecha de emisión</small>
+              <strong>{{ factura.fecha_emision|date:"d/m/Y" }}</strong>
+            </div>
+            <div class="col-md-6">
+              <small class="text-muted d-block">Fecha de vencimiento</small>
+              <strong>{{ factura.fecha_vencimiento|date:"d/m/Y"|default:"—" }}</strong>
+            </div>
+          </div>
+
+          <hr>
+
+          <div class="row g-3">
+            <div class="col-md-4">
+              <small class="text-muted d-block">RIF contraparte</small>
+              <strong>{{ factura.rif_contraparte }}</strong>
+            </div>
+            <div class="col-md-8">
+              <small class="text-muted d-block">Razón social</small>
+              <strong>{{ factura.razon_social_contraparte }}</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ═══════════════ MONTOS ═══════════════ #}
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100 border-start border-4 border-primary">
+        <div class="card-header bg-white">
+          <strong><i class="bi bi-calculator"></i> Montos</strong>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between mb-2">
+            <span>Base imponible:</span>
+            <strong>Bs. {{ factura.base_imponible|floatformat:2 }}</strong>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span>Alícuota:</span>
+            <strong>{{ factura.alicuota_iva|floatformat:2 }}%</strong>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span>IVA:</span>
+            <strong>Bs. {{ factura.monto_iva|floatformat:2 }}</strong>
+          </div>
+          {% if factura.monto_exento > 0 %}
+            <div class="d-flex justify-content-between mb-2">
+              <span>Exento:</span>
+              <strong>Bs. {{ factura.monto_exento|floatformat:2 }}</strong>
+            </div>
+          {% endif %}
+          {% if factura.iva_retenido > 0 %}
+            <div class="d-flex justify-content-between mb-2 text-warning">
+              <span>IVA retenido:</span>
+              <strong>Bs. {{ factura.iva_retenido|floatformat:2 }}</strong>
+            </div>
+          {% endif %}
+          <hr>
+          <div class="d-flex justify-content-between">
+            <span class="fw-bold">TOTAL:</span>
+            <strong class="text-primary fs-5">Bs. {{ factura.monto_total|floatformat:2 }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  {# ═══════════════ ACCIONES ═══════════════ #}
+  <div class="mt-3 d-flex gap-2">
+    {% if factura.estado == "borrador" %}
+      <form method="post" action="{% url 'contabilidad:factura_fiscal_confirmar' factura.id %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success"
+                {% if errores_validacion %}disabled title="Corrige los errores primero"{% endif %}>
+          <i class="bi bi-check-circle"></i> Confirmar Factura
+        </button>
+      </form>
+    {% endif %}
+    {% if factura.asiento %}
+      <a href="#" class="btn btn-outline-info">
+        <i class="bi bi-journal-text"></i> Ver asiento N° {{ factura.asiento.numero }}
+      </a>
+    {% endif %}
+    <a href="/admin/contabilidad/facturafiscal/{{ factura.id }}/change/"
+       class="btn btn-outline-secondary">
+      <i class="bi bi-pencil"></i> Editar (Admin)
+    </a>
+  </div>
+
+</div>
+{% endblock %}

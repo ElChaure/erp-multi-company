@@ -1,0 +1,80 @@
+{% extends "rrhh/base.html" %}
+
+{% block title %}Mi perfil - RRHH{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Mi perfil</h1>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="avatar-circle mx-auto mb-3">
+                    {{ user.username|first|upper }}
+                </div>
+                <h5 class="mb-1">{{ user.get_full_name|default:user.username }}</h5>
+                <p class="text-muted small mb-2">{{ user.email }}</p>
+                <span class="badge bg-primary">{{ perfil.get_rol_display }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">Datos adicionales</div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label">Teléfono</label>
+                        <input type="text" name="telefono" class="form-control"
+                               value="{{ perfil.telefono }}" placeholder="+58 412 1234567">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Cargo</label>
+                        <input type="text" name="cargo" class="form-control"
+                               value="{{ perfil.cargo }}" placeholder="Analista de RRHH">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">Información de la cuenta</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Usuario</dt>
+                    <dd class="col-sm-8">{{ user.username }}</dd>
+                    <dt class="col-sm-4">Email</dt>
+                    <dd class="col-sm-8">{{ user.email }}</dd>
+                    <dt class="col-sm-4">Rol</dt>
+                    <dd class="col-sm-8">{{ perfil.get_rol_display }}</dd>
+                    <dt class="col-sm-4">Último acceso</dt>
+                    <dd class="col-sm-8">{{ user.last_login|date:"d/m/Y H:i"|default:"—" }}</dd>
+                    <dt class="col-sm-4">Miembro desde</dt>
+                    <dd class="col-sm-8">{{ user.date_joined|date:"d/m/Y" }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .avatar-circle {
+        width: 80px;
+        height: 80px;
+        background: #2563eb;
+        color: #fff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        font-weight: 700;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,237 @@
+{% extends "rrhh/base.html" %}
+
+{% block title %}Nómina - Periodos{% endblock %}
+
+{% block content %}
+
+{# ═══════════════════════════════════════════════════════════ #}
+{#  HEADER                                                    #}
+{# ═══════════════════════════════════════════════════════════ #}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h1 class="mb-1">
+            <i class="bi bi-cash-coin text-success"></i>
+            Nómina
+        </h1>
+        <p class="text-muted mb-0 small">
+            Gestión de periodos de nómina · {{ total }} periodo(s) encontrado(s)
+        </p>
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════ #}
+{#  FILTROS                                                   #}
+{# ═══════════════════════════════════════════════════════════ #}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            {# Año #}
+            <div class="col-6 col-md-2">
+                <label class="form-label small text-muted mb-1">Año</label>
+                <select name="anio" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for a in anios_disponibles %}
+                        <option value="{{ a }}" {% if filtros.anio == a|stringformat:"s" %}selected{% endif %}>
+                            {{ a }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {# Tipo #}
+            <div class="col-6 col-md-2">
+                <label class="form-label small text-muted mb-1">Tipo</label>
+                <select name="tipo" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for value, label in tipos %}
+                        <option value="{{ value }}" {% if filtros.tipo == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {# Estatus #}
+            <div class="col-6 col-md-2">
+                <label class="form-label small text-muted mb-1">Estatus</label>
+                <select name="estatus" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for value, label in estatus_choices %}
+                        <option value="{{ value }}" {% if filtros.estatus == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {# Empresa (solo superadmin) #}
+            {% if empresas %}
+            <div class="col-6 col-md-2">
+                <label class="form-label small text-muted mb-1">Empresa</label>
+                <select name="empresa" class="form-select form-select-sm">
+                    <option value="">Todas</option>
+                    {% for e in empresas %}
+                        <option value="{{ e.id }}" {% if filtros.empresa == e.id|stringformat:"s" %}selected{% endif %}>
+                            {{ e.nombre_comercial|default:e.razon_social }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            {# Búsqueda #}
+            <div class="col-12 col-md-3">
+                <label class="form-label small text-muted mb-1">Buscar</label>
+                <input type="text" name="q" class="form-control form-control-sm"
+                       placeholder="Número o empresa…"
+                       value="{{ filtros.q }}">
+            </div>
+
+            {# Botones #}
+            <div class="col-12 col-md-auto d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+                <a href="{% url 'rrhh:nomina_periodo_lista' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Limpiar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════ #}
+{#  LISTADO                                                   #}
+{# ═══════════════════════════════════════════════════════════ #}
+
+<div class="card">
+    <div class="card-body p-0">
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 80px;">Nº</th>
+                            <th style="width: 140px;">Tipo</th>
+                            <th>Año</th>
+                            <th>Fechas</th>
+                            <th class="text-center">Empleados</th>
+                            <th class="text-end">Neto</th>
+                            <th class="text-end">Costo empresa</th>
+                            <th style="width: 140px;">Estatus</th>
+                            <th style="width: 100px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in page_obj %}
+                            <tr>
+                                <td class="fw-semibold">#{{ p.numero_periodo }}</td>
+                                <td>
+                                    <span class="badge bg-light text-dark">
+                                        {{ p.get_tipo_display }}
+                                    </span>
+                                </td>
+                                <td>{{ p.anio }}</td>
+                                <td class="small text-muted">
+                                    {{ p.fecha_inicio|date:"d/m/Y" }} → {{ p.fecha_fin|date:"d/m/Y" }}
+                                    <br>
+                                    <span class="text-muted">Pago: {{ p.fecha_pago|date:"d/m/Y" }}</span>
+                                </td>
+                                <td class="text-center">
+                                    {% if p.empleados_procesados %}
+                                        <span class="badge bg-primary">{{ p.empleados_procesados }}</span>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end fw-semibold text-success">
+                                    {% if p.total_neto %}
+                                        Bs. {{ p.total_neto|floatformat:2 }}
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end text-muted small">
+                                    {% if p.total_costo_empresa %}
+                                        Bs. {{ p.total_costo_empresa|floatformat:2 }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if p.estatus == "abierto" %}
+                                        <span class="badge bg-info text-dark">Abierto</span>
+                                    {% elif p.estatus == "calculado" %}
+                                        <span class="badge bg-warning text-dark">Calculado</span>
+                                    {% elif p.estatus == "aprobado" %}
+                                        <span class="badge bg-primary">Aprobado</span>
+                                    {% elif p.estatus == "pagado" %}
+                                        <span class="badge bg-success">Pagado</span>
+                                    {% elif p.estatus == "cerrado" %}
+                                        <span class="badge bg-secondary">Cerrado</span>
+                                    {% elif p.estatus == "cancelado" %}
+                                        <span class="badge bg-danger">Cancelado</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark">{{ p.get_estatus_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'rrhh:nomina_periodo_detalle' p.pk %}"
+                                       class="btn btn-sm btn-outline-primary"
+                                       title="Ver detalle">
+                                        <i class="bi bi-eye"></i> Ver
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center text-muted py-5">
+                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                <p class="mb-0">No hay periodos de nómina registrados</p>
+                <small>Los periodos se crean desde el admin o el sistema</small>
+            </div>
+        {% endif %}
+    </div>
+
+    {# Paginación #}
+    {% if page_obj.has_other_pages %}
+        <div class="card-footer bg-white">
+            <nav>
+                <ul class="pagination pagination-sm mb-0 justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}">«</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">«</span></li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if num == page_obj.number %}
+                            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}">»</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">»</span></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    {% endif %}
+</div>
+
+{% endblock %}

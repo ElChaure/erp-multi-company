@@ -1,0 +1,171 @@
+{% extends "rrhh/base.html" %}
+
+{% block title %}{{ sede.nombre }} - RRHH System{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div class="d-flex align-items-center gap-3">
+        <div class="sede-avatar"><i class="bi bi-geo-alt"></i></div>
+        <div>
+            <h1 class="mb-1">{{ sede.nombre }}</h1>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <span class="badge bg-light text-dark font-monospace">{{ sede.codigo }}</span>
+                <span class="badge bg-secondary">{{ sede.get_tipo_display }}</span>
+                {% if sede.es_principal %}
+                    <span class="badge bg-warning text-dark">Sede principal</span>
+                {% endif %}
+                {% if sede.activa %}
+                    <span class="badge bg-success">Activa</span>
+                {% else %}
+                    <span class="badge bg-secondary">Inactiva</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a href="{% url 'rrhh:sede_lista' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+        {% if user.perfil.es_rrhh %}
+            <a href="{% url 'rrhh:sede_editar' sede.pk %}" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+        {% endif %}
+        {% if user.perfil.es_admin %}
+            <a href="{% url 'rrhh:sede_eliminar' sede.pk %}" class="btn btn-outline-danger">
+                <i class="bi bi-trash"></i> Eliminar
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 text-primary"><i class="bi bi-info-circle"></i> Información general</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0 detail-list">
+                    <dt class="col-sm-5">Empresa</dt>
+                    <dd class="col-sm-7">
+                        <a href="{% url 'rrhh:empresa_detalle' sede.empresa.pk %}">
+                            {{ sede.empresa.razon_social }}
+                        </a>
+                    </dd>
+
+                    <dt class="col-sm-5">Código</dt>
+                    <dd class="col-sm-7 font-monospace">{{ sede.codigo }}</dd>
+
+                    <dt class="col-sm-5">Tipo</dt>
+                    <dd class="col-sm-7">{{ sede.get_tipo_display }}</dd>
+
+                    <dt class="col-sm-5">¿Principal?</dt>
+                    <dd class="col-sm-7">{% if sede.es_principal %}Sí{% else %}No{% endif %}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 text-primary"><i class="bi bi-telephone"></i> Ubicación y contacto</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0 detail-list">
+                    <dt class="col-sm-5">Dirección</dt>
+                    <dd class="col-sm-7">{{ sede.direccion|default:"—" }}</dd>
+
+                    <dt class="col-sm-5">Ciudad</dt>
+                    <dd class="col-sm-7">{{ sede.ciudad|default:"—" }}, {{ sede.estado|default:"" }}</dd>
+
+                    <dt class="col-sm-5">País</dt>
+                    <dd class="col-sm-7">{{ sede.pais }}</dd>
+
+                    <dt class="col-sm-5">Teléfono</dt>
+                    <dd class="col-sm-7">{{ sede.telefono|default:"—" }}</dd>
+
+                    <dt class="col-sm-5">Email</dt>
+                    <dd class="col-sm-7">
+                        {% if sede.email %}
+                            <a href="mailto:{{ sede.email }}">{{ sede.email }}</a>
+                        {% else %}—{% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 text-primary"><i class="bi bi-people"></i> Empleados ({{ empleados|length }})</h6>
+            </div>
+            <div class="card-body p-0">
+                {% if empleados %}
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Nombre</th>
+                                <th>Cédula</th>
+                                <th>Cargo</th>
+                                <th>Departamento</th>
+                                <th>Estatus</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for emp in empleados %}
+                                <tr>
+                                    <td><span class="badge bg-light text-dark font-monospace">{{ emp.numero_empleado }}</span></td>
+                                    <td>
+                                        <a href="{% url 'rrhh:empleado_detalle' emp.pk %}" class="text-decoration-none">
+                                            {{ emp.nombre_completo }}
+                                        </a>
+                                    </td>
+                                    <td class="font-monospace">{{ emp.cedula_completa }}</td>
+                                    <td>{{ emp.cargo.nombre|default:"—" }}</td>
+                                    <td>{{ emp.departamento.nombre|default:"—" }}</td>
+                                    <td>
+                                        {% if emp.estatus == "activo" %}
+                                            <span class="badge bg-success">Activo</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ emp.get_estatus_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-people" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">No hay empleados en esta sede.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .sede-avatar {
+        display: inline-flex;
+        width: 72px;
+        height: 72px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        color: #fff;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        flex-shrink: 0;
+    }
+    .detail-list dt { color: #6b7280; font-weight: 500; font-size: 0.9rem; padding-bottom: 0.5rem; }
+    .detail-list dd { font-size: 0.95rem; padding-bottom: 0.5rem; }
+</style>
+
+{% endblock %}

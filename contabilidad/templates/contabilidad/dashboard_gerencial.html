@@ -1,0 +1,300 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Dashboard Gerencial — {{ presupuesto.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  {# ═══════════════ ENCABEZADO ═══════════════ #}
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h4 class="mb-0">
+        <i class="bi bi-speedometer2 text-primary"></i>
+        Dashboard Gerencial — {{ presupuesto.nombre }}
+      </h4>
+      <small class="text-muted">
+        Ejercicio {{ presupuesto.ejercicio.anio }} · {{ empresa.razon_social }}
+      </small>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{% url 'contabilidad:presupuesto_vs_real' presupuesto.id %}"
+         class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-bar-chart-line"></i> Presupuesto vs Real
+      </a>
+      <a href="{% url 'contabilidad:presupuesto_detalle' presupuesto.id %}"
+         class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-pencil-square"></i> Editar presupuesto
+      </a>
+      <a href="{% url 'contabilidad:presupuesto_lista' %}"
+         class="btn btn-outline-dark btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+      </a>
+    </div>
+  </div>
+
+  {# ═══════════════ KPIs ═══════════════ #}
+  <div class="row g-3 mb-4">
+
+    {# KPI 1: Ingresos #}
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100 border-start border-4 border-success">
+        <div class="card-body">
+          <small class="text-muted text-uppercase">Ingresos</small>
+          <h5 class="mb-1 mt-1">Bs. {{ kpis.total_real_ingreso|floatformat:2 }}</h5>
+          <small class="text-muted">
+            Presupuesto: Bs. {{ kpis.total_pres_ingreso|floatformat:2 }}
+          </small>
+          <div class="mt-2">
+            <div class="progress" style="height: 8px;">
+              <div class="progress-bar {% if kpis.ejecucion_ingreso >= 100 %}bg-success{% elif kpis.ejecucion_ingreso >= 80 %}bg-warning{% else %}bg-danger{% endif %}"
+                   role="progressbar"
+                   style="width: {% if kpis.ejecucion_ingreso > 100 %}100{% else %}{{ kpis.ejecucion_ingreso|floatformat:0 }}{% endif %}%">
+              </div>
+            </div>
+            <small class="{% if kpis.ejecucion_ingreso >= 100 %}text-success{% else %}text-danger{% endif %} fw-semibold">
+              {{ kpis.ejecucion_ingreso|floatformat:1 }}% ejecutado
+            </small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# KPI 2: Egresos #}
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100 border-start border-4 border-danger">
+        <div class="card-body">
+          <small class="text-muted text-uppercase">Egresos (Gasto + Costo)</small>
+          <h5 class="mb-1 mt-1">Bs. {{ kpis.total_real_egreso|floatformat:2 }}</h5>
+          <small class="text-muted">
+            Presupuesto: Bs. {{ kpis.total_pres_egreso|floatformat:2 }}
+          </small>
+          <div class="mt-2">
+            <div class="progress" style="height: 8px;">
+              <div class="progress-bar {% if kpis.ejecucion_egreso <= 100 %}bg-success{% elif kpis.ejecucion_egreso <= 120 %}bg-warning{% else %}bg-danger{% endif %}"
+                   role="progressbar"
+                   style="width: {% if kpis.ejecucion_egreso > 100 %}100{% else %}{{ kpis.ejecucion_egreso|floatformat:0 }}{% endif %}%">
+              </div>
+            </div>
+            <small class="{% if kpis.ejecucion_egreso <= 100 %}text-success{% else %}text-danger{% endif %} fw-semibold">
+              {{ kpis.ejecucion_egreso|floatformat:1 }}% ejecutado
+            </small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# KPI 3: Margen bruto #}
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100 border-start border-4 border-info">
+        <div class="card-body">
+          <small class="text-muted text-uppercase">Margen Bruto</small>
+          <h5 class="mb-1 mt-1">
+            Bs. {{ kpis.total_real_ingreso|add:"-"|add:kpis.total_real_egreso|floatformat:2 }}
+          </h5>
+          <small class="text-muted">
+            {% if kpis.total_real_ingreso > 0 %}
+              {{ kpis.total_real_ingreso|floatformat:0 }} − {{ kpis.total_real_egreso|floatformat:0 }}
+            {% else %}
+              Sin ingresos registrados
+            {% endif %}
+          </small>
+        </div>
+      </div>
+    </div>
+
+    {# KPI 4: Presupuesto anual total #}
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100 border-start border-4 border-primary">
+        <div class="card-body">
+          <small class="text-muted text-uppercase">Presupuesto Anual</small>
+          <h5 class="mb-1 mt-1">
+            Bs. {{ kpis.total_pres_ingreso|add:kpis.total_pres_egreso|floatformat:2 }}
+          </h5>
+          <small class="text-muted">
+            Ingreso: {{ kpis.total_pres_ingreso|floatformat:0 }} · Egreso: {{ kpis.total_pres_egreso|floatformat:0 }}
+          </small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ═══════════════ GRÁFICOS ═══════════════ #}
+  <div class="row g-3 mb-4">
+
+    {# Gráfico 1: Ingresos #}
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <strong><i class="bi bi-graph-up-arrow text-success"></i> Ingresos: Presupuesto vs Real</strong>
+          <span class="badge bg-success-subtle text-success-emphasis">
+            {{ kpis.ejecucion_ingreso|floatformat:1 }}% ejecutado
+          </span>
+        </div>
+        <div class="card-body">
+          <canvas id="chart-ingresos" height="220"></canvas>
+        </div>
+      </div>
+    </div>
+
+    {# Gráfico 2: Egresos #}
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <strong><i class="bi bi-graph-down-arrow text-danger"></i> Egresos: Presupuesto vs Real</strong>
+          <span class="badge bg-danger-subtle text-danger-emphasis">
+            {{ kpis.ejecucion_egreso|floatformat:1 }}% ejecutado
+          </span>
+        </div>
+        <div class="card-body">
+          <canvas id="chart-egresos" height="220"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ═══════════════ TOP 5 DESVIACIONES ═══════════════ #}
+  <div class="card shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <strong><i class="bi bi-exclamation-triangle text-warning"></i> Top 5 Desviaciones (por monto absoluto)</strong>
+      <a href="{% url 'contabilidad:presupuesto_vs_real' presupuesto.id %}"
+         class="btn btn-outline-primary btn-sm">
+        Ver reporte completo
+      </a>
+    </div>
+    <div class="card-body p-0">
+      {% if top_desviaciones %}
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Cuenta</th>
+                <th class="text-end">Presupuesto</th>
+                <th class="text-end">Real</th>
+                <th class="text-end">Diferencia</th>
+                <th class="text-center">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in top_desviaciones %}
+                <tr>
+                  <td>
+                    <div class="fw-semibold">{{ d.cuenta.codigo }} — {{ d.cuenta.nombre }}</div>
+                    <small class="text-muted">{{ d.cuenta.get_tipo_display }}</small>
+                  </td>
+                  <td class="text-end">{{ d.presupuesto|floatformat:2 }}</td>
+                  <td class="text-end">{{ d.real|floatformat:2 }}</td>
+                  <td class="text-end fw-semibold {% if d.desviacion.es_favorable %}text-success{% else %}text-danger{% endif %}">
+                    {{ d.desviacion.diferencia|floatformat:2 }}
+                  </td>
+                  <td class="text-center">
+                    {% if d.desviacion.es_favorable %}
+                      <span class="badge bg-success">Favorable</span>
+                    {% else %}
+                      <span class="badge bg-danger">Desfavorable</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="text-center py-4 text-muted">
+          <i class="bi bi-check-circle fs-1 text-success"></i>
+          <p class="mt-2 mb-0">No hay desviaciones significativas.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+{# ═══════════════ CHART.JS ═══════════════ #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const labels = {{ meses_labels|safe }};
+  const presIngreso = {{ pres_ingreso_mes|safe }};
+  const realIngreso = {{ real_ingreso_mes|safe }};
+  const presEgreso = {{ pres_egreso_mes|safe }};
+  const realEgreso = {{ real_egreso_mes|safe }};
+
+  const opcionesBase = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: "bottom" },
+      tooltip: {
+        callbacks: {
+          label: function (ctx) {
+            return ctx.dataset.label + ": Bs. " +
+              ctx.parsed.y.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          callback: function (v) {
+            return "Bs. " + v.toLocaleString("es-VE", { maximumFractionDigits: 0 });
+          }
+        }
+      }
+    }
+  };
+
+  // ─── Gráfico Ingresos ───
+  new Chart(document.getElementById("chart-ingresos"), {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: "Presupuesto",
+          data: presIngreso,
+          backgroundColor: "rgba(34, 197, 94, 0.35)",
+          borderColor: "rgba(34, 197, 94, 1)",
+          borderWidth: 1,
+        },
+        {
+          label: "Real",
+          data: realIngreso,
+          backgroundColor: "rgba(34, 197, 94, 0.9)",
+          borderColor: "rgba(22, 163, 74, 1)",
+          borderWidth: 1,
+        }
+      ]
+    },
+    options: opcionesBase
+  });
+
+  // ─── Gráfico Egresos ───
+  new Chart(document.getElementById("chart-egresos"), {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: "Presupuesto",
+          data: presEgreso,
+          backgroundColor: "rgba(239, 68, 68, 0.35)",
+          borderColor: "rgba(239, 68, 68, 1)",
+          borderWidth: 1,
+        },
+        {
+          label: "Real",
+          data: realEgreso,
+          backgroundColor: "rgba(239, 68, 68, 0.9)",
+          borderColor: "rgba(185, 28, 28, 1)",
+          borderWidth: 1,
+        }
+      ]
+    },
+    options: opcionesBase
+  });
+})();
+</script>
+{% endblock %}

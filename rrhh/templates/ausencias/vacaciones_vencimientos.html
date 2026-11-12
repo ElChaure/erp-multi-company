@@ -1,0 +1,221 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Vacaciones por vencer - RRHH{% endblock %}
+
+{% block content %}
+{# ═══════════════════════════════════════════════════ #}
+{# HEADER                                            #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <a href="{% url 'rrhh:vacaciones_lista' %}" class="text-muted small text-decoration-none">
+            <i class="bi bi-arrow-left"></i> Volver a saldos
+        </a>
+        <h1 class="mb-1 mt-1">
+            <i class="bi bi-alarm text-warning"></i>
+            Días por vencer
+        </h1>
+        <p class="text-muted mb-0 small">
+            Saldos cuya fecha límite está dentro de los próximos {{ dias_aviso }} días
+        </p>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <label class="small text-muted mb-0">Días:</label>
+        <select class="form-select form-select-sm" style="width: auto;"
+                onchange="location.href='?dias=' + this.value">
+            <option value="30" {% if dias_aviso == 30 %}selected{% endif %}>30 días</option>
+            <option value="60" {% if dias_aviso == 60 %}selected{% endif %}>60 días</option>
+            <option value="90" {% if dias_aviso == 90 %}selected{% endif %}>90 días</option>
+            <option value="180" {% if dias_aviso == 180 %}selected{% endif %}>180 días</option>
+        </select>
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════ #}
+{# KPIs                                              #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 border-warning">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Por vencer</h6>
+                <h3 class="mb-0 text-warning">{{ kpis.cantidad_por_vencer }}</h3>
+                <small class="text-muted">Saldos en los próximos {{ dias_aviso }} días</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Días en riesgo</h6>
+                <h3 class="mb-0">{{ kpis.total_dias_por_vencer|floatformat:0 }}</h3>
+                <small class="text-muted">Días pendientes por vencer</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 {% if kpis.cantidad_vencidos > 0 %}border-danger{% endif %}">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Ya vencidos</h6>
+                <h3 class="mb-0 {% if kpis.cantidad_vencidos > 0 %}text-danger{% endif %}">
+                    {{ kpis.cantidad_vencidos }}
+                </h3>
+                <small class="text-muted">Saldos con fecha límite pasada</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Días vencidos</h6>
+                <h3 class="mb-0">{{ kpis.total_dias_vencidos|floatformat:0 }}</h3>
+                <small class="text-muted">Días pendientes ya vencidos</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════ #}
+{# ACCIÓN: PROCESAR VENCIMIENTOS                     #}
+{# ═══════════════════════════════════════════════════ #}
+{% if kpis.cantidad_vencidos > 0 %}
+<div class="alert alert-danger d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <i class="bi bi-exclamation-octagon"></i>
+        <strong>Hay {{ kpis.cantidad_vencidos }} saldo(s) vencido(s)</strong>
+        con un total de {{ kpis.total_dias_vencidos|floatformat:0 }} días.
+        Podés procesarlos para marcarlos como vencidos y ajustar los saldos.
+    </div>
+    <form method="post" action="{% url 'rrhh:vacaciones_procesar_vencimientos' %}" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger"
+                onclick="return confirm('¿Procesar todos los vencimientos? Esta acción ajusta los saldos y no se puede deshacer fácilmente.')">
+            <i class="bi bi-check2-circle"></i> Procesar vencidos
+        </button>
+    </form>
+</div>
+{% endif %}
+
+{# ═══════════════════════════════════════════════════ #}
+{# POR VENCER                                        #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="card mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="bi bi-clock-history text-warning"></i>
+            Por vencer (próximos {{ dias_aviso }} días)
+        </h6>
+        <span class="badge bg-warning text-dark">{{ kpis.cantidad_por_vencer }}</span>
+    </div>
+    <div class="card-body p-0">
+        {% if items %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Empleado</th>
+                        <th class="text-center">Días pendientes</th>
+                        <th class="text-center">Vence</th>
+                        <th class="text-center">Días restantes</th>
+                        <th style="width: 100px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td>
+                            <div class="fw-semibold small">{{ item.empleado.nombre_completo }}</div>
+                            <div class="text-muted" style="font-size: 11px;">
+                                {{ item.empleado.numero_empleado }}
+                                · Año {{ item.saldo.anio }}
+                            </div>
+                        </td>
+                        <td class="text-center fw-bold text-warning">
+                            {{ item.dias_pendientes|floatformat:0 }}
+                        </td>
+                        <td class="text-center small">
+                            {{ item.fecha_vencimiento|date:"d/m/Y" }}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge {% if item.dias_restantes <= 15 %}bg-danger{% elif item.dias_restantes <= 30 %}bg-warning text-dark{% else %}bg-info text-dark{% endif %}">
+                                {{ item.dias_restantes }} días
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'rrhh:vacaciones_detalle' item.empleado.id %}?anio={{ item.saldo.anio }}"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> Ver
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-check-circle fs-1 d-block mb-2 text-success"></i>
+            <p class="mb-0">Sin saldos por vencer en los próximos {{ dias_aviso }} días</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════ #}
+{# YA VENCIDOS                                       #}
+{# ═══════════════════════════════════════════════════ #}
+{% if items_vencidos %}
+<div class="card mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="bi bi-x-octagon text-danger"></i>
+            Ya vencidos
+        </h6>
+        <span class="badge bg-danger">{{ kpis.cantidad_vencidos }}</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Empleado</th>
+                        <th class="text-center">Días pendientes</th>
+                        <th class="text-center">Venció el</th>
+                        <th class="text-center">Días vencidos</th>
+                        <th style="width: 100px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items_vencidos %}
+                    <tr>
+                        <td>
+                            <div class="fw-semibold small">{{ item.empleado.nombre_completo }}</div>
+                            <div class="text-muted" style="font-size: 11px;">
+                                {{ item.empleado.numero_empleado }}
+                                · Año {{ item.saldo.anio }}
+                            </div>
+                        </td>
+                        <td class="text-center fw-bold text-danger">
+                            {{ item.dias_pendientes|floatformat:0 }}
+                        </td>
+                        <td class="text-center small">
+                            {{ item.fecha_vencimiento|date:"d/m/Y" }}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-danger">{{ item.dias_vencidos }} días</span>
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'rrhh:vacaciones_detalle' item.empleado.id %}?anio={{ item.saldo.anio }}"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> Ver
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

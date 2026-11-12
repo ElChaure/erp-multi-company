@@ -1,0 +1,87 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Sincronizar Costos - Costos{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="mb-1"><i class="bi bi-arrow-repeat text-primary"></i> Sincronizar Costos Reales</h1>
+    <p class="text-muted mb-0 small">{{ empresa.razon_social }}</p>
+  </div>
+  <a href="{% url 'contabilidad:costos_ordenes_lista' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-box-seam"></i> Órdenes de Producción
+  </a>
+</div>
+
+<div class="card mb-4 border-primary">
+  <div class="card-body">
+    <h6 class="mb-3"><i class="bi bi-lightning-charge"></i> Sincronizar desde otros módulos</h6>
+    <p class="small text-muted mb-3">
+      Esta acción leerá los datos de <strong>Activos Fijos</strong> (depreciación) y <strong>Nómina</strong> (sueldos) 
+      para llenar automáticamente el costo real de cada recurso en el mes seleccionado.
+    </p>
+    <form method="post" class="row g-2 align-items-end">
+      {% csrf_token %}
+      <div class="col-md-3">
+        <label class="form-label small">Año</label>
+        <input type="number" name="anio" class="form-control" value="{{ hoy.year }}" required>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small">Mes</label>
+        <select name="mes" class="form-select" required>
+          {% for num, nombre in meses %}
+          <option value="{{ num }}" {% if num == hoy.month %}selected{% endif %}>{{ nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-arrow-repeat"></i> Sincronizar Costos
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-white">
+    <h6 class="mb-0">Costos Reales Sincronizados</h6>
+  </div>
+  <div class="card-body p-0">
+    {% if costos %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Recurso</th>
+            <th>Período</th>
+            <th class="text-end">Costo Total</th>
+            <th class="text-end">Horas</th>
+            <th class="text-end">Costo Unitario</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in costos %}
+          <tr>
+            <td class="small">
+              <strong>{{ c.recurso.codigo }}</strong> - {{ c.recurso.nombre }}
+              <span class="badge bg-secondary ms-1">{{ c.recurso.get_tipo_display }}</span>
+            </td>
+            <td class="small">{{ c.periodo.anio }}-{{ c.periodo.mes|stringformat:"02d" }}</td>
+            <td class="text-end small">Bs. {{ c.costo_total_periodo|floatformat:2 }}</td>
+            <td class="text-end small">{{ c.horas_trabajadas|floatformat:2 }}</td>
+            <td class="text-end small fw-bold">Bs. {{ c.costo_unitario|floatformat:6 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-5">
+      <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+      <p>No hay costos sincronizados. Ejecuta la sincronización arriba.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

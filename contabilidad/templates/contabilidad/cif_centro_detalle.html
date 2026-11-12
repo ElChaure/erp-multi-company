@@ -1,0 +1,299 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Auditoría CIF — {{ centro.codigo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  {# ═══════════════ ENCABEZADO ═══════════════ #}
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h4 class="mb-0">
+        <i class="bi bi-calculator text-primary"></i>
+        Auditoría de CIF — {{ centro.codigo }}
+      </h4>
+      <small class="text-muted">
+        {{ centro.nombre }} · {{ empresa.razon_social }}
+      </small>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'contabilidad:cif_reporte' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver al reporte
+      </a>
+      <a href="{% url 'contabilidad:cif_configuracion' %}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-gear"></i> Editar configuración
+      </a>
+    </div>
+  </div>
+
+  {# ═══════════════ DATOS DEL CENTRO ═══════════════ #}
+  <div class="row g-3 mb-3">
+
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <small class="text-muted text-uppercase">Centro de Costo</small>
+          <h5 class="mb-1 mt-1">{{ centro.codigo }}</h5>
+          <small class="text-muted d-block">{{ centro.nombre }}</small>
+          <span class="badge bg-secondary mt-2">{{ centro.get_tipo_display }}</span>
+          {% if centro == config.centro_pivot %}
+            <span class="badge bg-warning text-dark mt-2">PIVOT</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100 border-start border-4 border-primary">
+        <div class="card-body">
+          <small class="text-muted text-uppercase">Coeficiente</small>
+          <h5 class="mb-1 mt-1 font-monospace">{{ cdc.coeficiente_calculado|floatformat:6 }}</h5>
+          {% if cdc.coeficiente_manual is not None %}
+            <span class="badge bg-info text-dark">Manual</span>
+          {% else %}
+            <span class="badge bg-success">Automático</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100 border-start border-4 border-info">
+        <div class="card-body">
+          <small class="text-muted text-uppercase">{{ driver_label }}</small>
+          <h5 class="mb-1 mt-1">
+            {% if config.driver == "AREA" %}{{ cdc.area_cm2|default:"—"|floatformat:2 }}
+            {% elif config.driver == "HORAS_MAQUINA" %}{{ cdc.horas_maquina_mes|default:"—"|floatformat:2 }}
+            {% elif config.driver == "HORAS_HOMBRE" %}{{ cdc.horas_hombre_mes|default:"—"|floatformat:2 }}
+            {% elif config.driver == "UNIDADES" %}{{ cdc.unidades_mes|default:"—"|floatformat:2 }}
+            {% elif config.driver == "COSTO_DIRECTO" %}{{ cdc.costo_directo_mes|default:"—"|floatformat:2 }}
+            {% else %}—{% endif %}
+          </h5>
+          {% if config.driver == "AREA" %}<small class="text-muted">cm²</small>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100 border-start border-4 border-success">
+        <div class="card-body">
+          <small class="text-muted text-uppercase">Estado</small>
+          <h5 class="mb-1 mt-1">
+            {% if cdc.centro_costo.activo %}
+              <span class="text-success">Activo</span>
+            {% else %}
+              <span class="text-danger">Inactivo</span>
+            {% endif %}
+          </h5>
+          {% if config.activa %}
+            <small class="text-muted">Configuración activa</small>
+          {% else %}
+            <small class="text-danger">Configuración inactiva</small>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ═══════════════ CÓMO SE CALCULA ═══════════════ #}
+  <div class="card shadow-sm mb-3">
+    <div class="card-header bg-white">
+      <strong><i class="bi bi-lightbulb text-warning"></i> ¿Cómo se calcula?</strong>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-8">
+          {% if config.driver == "PERSONALIZADO" %}
+            <p class="mb-2">
+              El driver es <strong>Personalizado</strong>, por lo que el coeficiente
+              se define a mano en la configuración.
+            </p>
+          {% elif cdc.coeficiente_manual is not None %}
+            <p class="mb-2">
+              El coeficiente fue definido <strong>manualmente</strong> en la configuración:
+            </p>
+            <div class="alert alert-info mb-2 py-2">
+              <code>coeficiente = {{ cdc.coeficiente_manual|floatformat:6 }}</code>
+            </div>
+          {% else %}
+            <p class="mb-2">El coeficiente se calcula con la fórmula del reparto proporcional:</p>
+            <div class="alert alert-info mb-2 py-2">
+              <code>
+                coeficiente = {{ driver_label }} del centro / {{ driver_label }} del PIVOT
+              </code>
+            </div>
+            <div class="alert alert-secondary mb-2 py-2">
+              <code>
+                coeficiente = {{ cdc.coeficiente_calculado|floatformat:6 }}
+              </code>
+            </div>
+            <p class="mb-0">
+              {% if config.driver == "AREA" %}
+                El centro tiene <strong>{{ cdc.area_cm2|default:"0"|floatformat:2 }} cm²</strong>
+                y el PIVOT ({{ config.centro_pivot.codigo|default:"—" }}) tiene
+                <strong>{{ config.base_pivot|floatformat:2 }} cm²</strong>.
+              {% elif config.driver == "HORAS_MAQUINA" %}
+                El centro tiene <strong>{{ cdc.horas_maquina_mes|default:"0"|floatformat:2 }} h/mes</strong>
+                y el PIVOT tiene <strong>{{ config.base_pivot|floatformat:2 }} h/mes</strong>.
+              {% elif config.driver == "HORAS_HOMBRE" %}
+                El centro tiene <strong>{{ cdc.horas_hombre_mes|default:"0"|floatformat:2 }} h/mes</strong>
+                y el PIVOT tiene <strong>{{ config.base_pivot|floatformat:2 }} h/mes</strong>.
+              {% elif config.driver == "UNIDADES" %}
+                El centro produce <strong>{{ cdc.unidades_mes|default:"0"|floatformat:2 }} unidades/mes</strong>
+                y el PIVOT produce <strong>{{ config.base_pivot|floatformat:2 }} unidades/mes</strong>.
+              {% elif config.driver == "COSTO_DIRECTO" %}
+                El centro tiene <strong>Bs. {{ cdc.costo_directo_mes|default:"0"|floatformat:2 }}</strong>
+                de costo directo/mes y el PIVOT tiene <strong>Bs. {{ config.base_pivot|floatformat:2 }}</strong>.
+              {% endif %}
+            </p>
+          {% endif %}
+        </div>
+        <div class="col-md-4">
+          <div class="card bg-light">
+            <div class="card-body text-center">
+              <small class="text-muted text-uppercase">Coeficiente Final</small>
+              <h2 class="mb-0 mt-2 font-monospace text-primary">
+                {{ cdc.coeficiente_calculado|floatformat:4 }}
+              </h2>
+              <small class="text-muted">(adimensional)</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ═══════════════ VALORES DE TODOS LOS DRIVERS ═══════════════ #}
+  <div class="card shadow-sm mb-3">
+    <div class="card-header bg-white">
+      <strong><i class="bi bi-table text-primary"></i> Valores de todos los drivers de este centro</strong>
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-sm mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Driver</th>
+            <th class="text-end">Valor</th>
+            <th>Unidad</th>
+            <th>¿Se usa?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr {% if config.driver == "AREA" %}class="table-success"{% endif %}>
+            <td>Área</td>
+            <td class="text-end">{{ cdc.area_cm2|default:"—"|floatformat:2 }}</td>
+            <td>cm²</td>
+            <td>
+              {% if config.driver == "AREA" %}
+                <span class="badge bg-success">✓ Sí</span>
+              {% else %}
+                <span class="badge bg-light text-dark">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr {% if config.driver == "HORAS_MAQUINA" %}class="table-success"{% endif %}>
+            <td>Horas-máquina / mes</td>
+            <td class="text-end">{{ cdc.horas_maquina_mes|default:"—"|floatformat:2 }}</td>
+            <td>h/mes</td>
+            <td>
+              {% if config.driver == "HORAS_MAQUINA" %}
+                <span class="badge bg-success">✓ Sí</span>
+              {% else %}
+                <span class="badge bg-light text-dark">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr {% if config.driver == "HORAS_HOMBRE" %}class="table-success"{% endif %}>
+            <td>Horas-hombre / mes</td>
+            <td class="text-end">{{ cdc.horas_hombre_mes|default:"—"|floatformat:2 }}</td>
+            <td>h/mes</td>
+            <td>
+              {% if config.driver == "HORAS_HOMBRE" %}
+                <span class="badge bg-success">✓ Sí</span>
+              {% else %}
+                <span class="badge bg-light text-dark">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr {% if config.driver == "UNIDADES" %}class="table-success"{% endif %}>
+            <td>Unidades producidas / mes</td>
+            <td class="text-end">{{ cdc.unidades_mes|default:"—"|floatformat:2 }}</td>
+            <td>unidades</td>
+            <td>
+              {% if config.driver == "UNIDADES" %}
+                <span class="badge bg-success">✓ Sí</span>
+              {% else %}
+                <span class="badge bg-light text-dark">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr {% if config.driver == "COSTO_DIRECTO" %}class="table-success"{% endif %}>
+            <td>Costo directo / mes</td>
+            <td class="text-end">{{ cdc.costo_directo_mes|default:"—"|floatformat:2 }}</td>
+            <td>Bs.</td>
+            <td>
+              {% if config.driver == "COSTO_DIRECTO" %}
+                <span class="badge bg-success">✓ Sí</span>
+              {% else %}
+                <span class="badge bg-light text-dark">—</span>
+              {% endif %}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ═══════════════ TABLA DE COMPARACIÓN CON EL RESTO ═══════════════ #}
+  <div class="card shadow-sm mb-3">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <strong><i class="bi bi-list-ol text-primary"></i> Comparación con el resto de centros</strong>
+      <small class="text-muted">Ordenado por coeficiente (mayor a menor)</small>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+        <table class="table table-sm table-hover mb-0 align-middle">
+          <thead class="table-light sticky-top">
+            <tr>
+              <th>Código</th>
+              <th>Centro</th>
+              <th class="text-end">{{ driver_label }}</th>
+              <th class="text-end">Coef.</th>
+              <th class="text-end">% del CIF</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for fila in comparacion %}
+              <tr {% if fila.es_este %}class="table-primary"{% endif %}>
+                <td>
+                  <span class="fw-semibold">{{ fila.centro_costo.codigo }}</span>
+                  {% if fila.es_pivot %}
+                    <span class="badge bg-warning text-dark ms-1">PIVOT</span>
+                  {% endif %}
+                  {% if fila.es_este %}
+                    <span class="badge bg-primary ms-1">Este</span>
+                  {% endif %}
+                </td>
+                <td>{{ fila.centro_costo.nombre }}</td>
+                <td class="text-end">{{ fila.valor_driver|floatformat:2 }}</td>
+                <td class="text-end font-monospace">{{ fila.coeficiente|floatformat:6 }}</td>
+                <td class="text-end">{{ fila.porcentaje|floatformat:2 }}%</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# ═══════════════ BOTONES DE NAVEGACIÓN ═══════════════ #}
+  <div class="d-flex justify-content-between align-items-center">
+    <a href="{% url 'contabilidad:cif_reporte' %}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Volver al reporte
+    </a>
+    <a href="{% url 'contabilidad:cif_configuracion' %}" class="btn btn-outline-primary">
+      <i class="bi bi-gear"></i> Editar configuración
+    </a>
+  </div>
+
+</div>
+{% endblock %}

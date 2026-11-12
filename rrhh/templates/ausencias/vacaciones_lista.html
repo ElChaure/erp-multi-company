@@ -1,0 +1,267 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Vacaciones - RRHH{% endblock %}
+
+{% block content %}
+{# ═══════════════════════════════════════════════════ #}
+{# HEADER                                            #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h1 class="mb-1">
+            <i class="bi bi-sun text-warning"></i>
+            Vacaciones
+        </h1>
+        <p class="text-muted mb-0 small">
+            Saldos de vacaciones · {{ total }} saldo(s) encontrado(s)
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'rrhh:vacaciones_vencimientos' %}" class="btn btn-sm btn-outline-warning">
+            <i class="bi bi-exclamation-triangle"></i> Por vencer
+        </a>
+        <a href="{% url 'rrhh:vacaciones_colectivas_lista' %}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-people"></i> Colectivas
+        </a>
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════ #}
+{# KPIs                                              #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="text-muted text-uppercase small mb-2">Días pendientes</h6>
+                        <h3 class="mb-0 text-warning">{{ kpis.total_pendientes|floatformat:0 }}</h3>
+                    </div>
+                    <div class="bg-warning bg-opacity-10 text-warning rounded-3 p-3">
+                        <i class="bi bi-sun fs-4"></i>
+                    </div>
+                </div>
+                <small class="text-muted">Total acumulado de todos los empleados</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="text-muted text-uppercase small mb-2">Con saldo</h6>
+                        <h3 class="mb-0 text-success">{{ kpis.con_saldo }}</h3>
+                    </div>
+                    <div class="bg-success bg-opacity-10 text-success rounded-3 p-3">
+                        <i class="bi bi-people fs-4"></i>
+                    </div>
+                </div>
+                <small class="text-muted">Empleados con días disponibles</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 {% if kpis.por_vencer > 0 %}border-warning{% endif %}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="text-muted text-uppercase small mb-2">Por vencer</h6>
+                        <h3 class="mb-0 {% if kpis.por_vencer > 0 %}text-warning{% else %}text-muted{% endif %}">
+                            {{ kpis.por_vencer }}
+                        </h3>
+                    </div>
+                    <div class="bg-warning bg-opacity-10 text-warning rounded-3 p-3">
+                        <i class="bi bi-alarm fs-4"></i>
+                    </div>
+                </div>
+                <small class="text-muted">Vencen en los próximos 60 días</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="text-muted text-uppercase small mb-2">Total saldos</h6>
+                        <h3 class="mb-0">{{ kpis.total_saldos }}</h3>
+                    </div>
+                    <div class="bg-primary bg-opacity-10 text-primary rounded-3 p-3">
+                        <i class="bi bi-list-ul fs-4"></i>
+                    </div>
+                </div>
+                <small class="text-muted">Saldos registrados</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════ #}
+{# FILTROS                                           #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-12 col-md-3">
+                <label class="form-label small text-muted mb-1">Buscar</label>
+                <input type="text" name="q" class="form-control form-control-sm"
+                       placeholder="Nombre, cédula o Nº empleado…"
+                       value="{{ filtros.q }}">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small text-muted mb-1">Año</label>
+                <select name="anio" class="form-select form-select-sm">
+                    {% for a in anios_disponibles %}
+                    <option value="{{ a }}" {% if filtros.anio == a|stringformat:"s" %}selected{% endif %}>
+                        {{ a }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small text-muted mb-1">Estado</label>
+                <select name="estado" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    <option value="por_vencer" {% if filtros.estado == "por_vencer" %}selected{% endif %}>
+                        Por vencer
+                    </option>
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small text-muted mb-1">Departamento</label>
+                <select name="departamento" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for d in departamentos %}
+                    <option value="{{ d.id }}" {% if filtros.departamento == d.id|stringformat:"s" %}selected{% endif %}>
+                        {{ d.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-auto d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+                <a href="{% url 'rrhh:vacaciones_lista' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Limpiar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════ #}
+{# LISTADO                                           #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="card">
+    <div class="card-body p-0">
+        {% if page_obj %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Empleado</th>
+                        <th>Cargo</th>
+                        <th class="text-center">Antigüedad</th>
+                        <th class="text-center">Derecho</th>
+                        <th class="text-center">Tomados</th>
+                        <th class="text-center">Pagados</th>
+                        <th class="text-center">Ajustes</th>
+                        <th class="text-center fw-bold">Pendientes</th>
+                        <th class="text-center">Vence</th>
+                        <th style="width: 100px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for saldo in page_obj %}
+                    <tr>
+                        <td>
+                            <div class="fw-semibold small">{{ saldo.empleado.nombre_completo }}</div>
+                            <div class="text-muted" style="font-size: 11px;">
+                                {{ saldo.empleado.numero_empleado }} · {{ saldo.empleado.cedula_completa }}
+                            </div>
+                        </td>
+                        <td class="small">{{ saldo.empleado.cargo.nombre|default:"—" }}</td>
+                        <td class="text-center small text-muted">
+                            {{ saldo.empleado.antiguedad_dias|floatformat:0 }} días
+                        </td>
+                        <td class="text-center">{{ saldo.dias_derecho|floatformat:0 }}</td>
+                        <td class="text-center text-muted">{{ saldo.dias_tomados|floatformat:0 }}</td>
+                        <td class="text-center text-muted">{{ saldo.dias_pagados|floatformat:0 }}</td>
+                        <td class="text-center text-muted">
+                            {% if saldo.dias_ajuste != 0 %}
+                            <span class="badge bg-light text-dark">
+                                {{ saldo.dias_ajuste|floatformat:0 }}
+                            </span>
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td class="text-center fw-bold {% if saldo.dias_pendientes > 0 %}text-success{% else %}text-muted{% endif %}">
+                            {{ saldo.dias_pendientes|floatformat:0 }}
+                        </td>
+                        <td class="text-center small">
+                            {% if saldo.fecha_limite_uso %}
+                                {% if saldo.fecha_limite_uso < hoy %}
+                                <span class="badge bg-danger">Vencido</span>
+                                {% elif saldo.fecha_limite_uso <= hoy|add:"60 days" %}
+                                <span class="badge bg-warning text-dark">
+                                    {{ saldo.fecha_limite_uso|date:"d/m/Y" }}
+                                </span>
+                                {% else %}
+                                <span class="text-muted">{{ saldo.fecha_limite_uso|date:"d/m/Y" }}</span>
+                                {% endif %}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'rrhh:vacaciones_detalle' saldo.empleado.id %}"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> Ver
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            <p class="mb-0">No hay saldos que coincidan con los filtros</p>
+            <small>Ajusta los filtros o limpia la búsqueda</small>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-white">
+        <nav>
+            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}">«</a>
+                </li>
+                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}">»</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

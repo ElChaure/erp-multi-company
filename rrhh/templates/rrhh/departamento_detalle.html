@@ -1,0 +1,543 @@
+{% extends "rrhh/base.html" %}
+
+{% block title %}{{ departamento.nombre }} - RRHH System{% endblock %}
+
+{% block content %}
+
+<!-- Encabezado -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div class="d-flex align-items-center gap-3">
+        <div class="depto-avatar">
+            <i class="bi bi-diagram-3"></i>
+        </div>
+        <div>
+            <h1 class="mb-1">{{ departamento.nombre }}</h1>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <span class="badge bg-light text-dark font-monospace">
+                    {{ departamento.codigo }}
+                </span>
+                <span class="badge bg-info text-dark">
+                    {{ departamento.empresa.razon_social }}
+                </span>
+                {% if departamento.activo %}
+                    <span class="badge bg-success">Activo</span>
+                {% else %}
+                    <span class="badge bg-secondary">Inactivo</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a href="{% url 'rrhh:departamento_lista' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+        {% if user.perfil.es_rrhh %}
+            <a href="{% url 'rrhh:departamento_editar' departamento.pk %}" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+        {% endif %}
+        {% if user.perfil.es_admin %}
+            <a href="{% url 'rrhh:departamento_eliminar' departamento.pk %}" class="btn btn-outline-danger">
+                <i class="bi bi-trash"></i> Eliminar
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- KPIs -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small">Empleados</span>
+                    <div class="kpi-icon kpi-icon-primary">
+                        <i class="bi bi-people"></i>
+                    </div>
+                </div>
+                <div class="h3 mb-0">{{ empleados|length }}</div>
+                <small class="text-muted">
+                    {{ empleados_activos_count }} activo{{ empleados_activos_count|pluralize:"s" }}
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small">Subdepartamentos</span>
+                    <div class="kpi-icon kpi-icon-info">
+                        <i class="bi bi-diagram-2"></i>
+                    </div>
+                </div>
+                <div class="h3 mb-0">{{ subdepartamentos|length }}</div>
+                <small class="text-muted">
+                    {% if departamento.padre %}
+                        Pertenece a {{ departamento.padre.nombre }}
+                    {% else %}
+                        Departamento raíz
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small">Presupuesto anual</span>
+                    <div class="kpi-icon kpi-icon-warning">
+                        <i class="bi bi-cash-stack"></i>
+                    </div>
+                </div>
+                <div class="h3 mb-0 font-monospace">
+                    {% if departamento.presupuesto_anual %}
+                        Bs. {{ departamento.presupuesto_anual|floatformat:2 }}
+                    {% else %}
+                        <span class="text-muted fs-5">No definido</span>
+                    {% endif %}
+                </div>
+                <small class="text-muted">Presupuesto asignado</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small">Costo nómina mensual</span>
+                    <div class="kpi-icon kpi-icon-success">
+                        <i class="bi bi-calculator"></i>
+                    </div>
+                </div>
+                <div class="h3 mb-0 font-monospace">
+                    Bs. {{ costo_nomina|floatformat:2 }}
+                </div>
+                <small class="text-muted">
+                    {% if departamento.presupuesto_anual %}
+                        {{ porcentaje_presupuesto|floatformat:1 }}% del presupuesto anual
+                    {% else %}
+                        Sin presupuesto asignado
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Información del departamento -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 text-primary">
+                    <i class="bi bi-info-circle"></i> Información del departamento
+                </h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0 detail-list">
+                    <dt class="col-sm-5">Código</dt>
+                    <dd class="col-sm-7">
+                        <span class="badge bg-light text-dark font-monospace">
+                            {{ departamento.codigo }}
+                        </span>
+                    </dd>
+
+                    <dt class="col-sm-5">Nombre</dt>
+                    <dd class="col-sm-7">{{ departamento.nombre }}</dd>
+
+                    <dt class="col-sm-5">Empresa</dt>
+                    <dd class="col-sm-7">
+                        <a href="{% url 'rrhh:empresa_detalle' departamento.empresa.pk %}"
+                           class="text-decoration-none">
+                            {{ departamento.empresa.razon_social }}
+                        </a>
+                    </dd>
+
+                    <dt class="col-sm-5">Departamento padre</dt>
+                    <dd class="col-sm-7">
+                        {% if departamento.padre %}
+                            <a href="{% url 'rrhh:departamento_detalle' departamento.padre.pk %}"
+                               class="text-decoration-none">
+                                <i class="bi bi-diagram-3"></i> {{ departamento.padre.nombre }}
+                            </a>
+                        {% else %}
+                            <span class="text-muted">— (Raíz)</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt class="col-sm-5">Responsable</dt>
+                    <dd class="col-sm-7">
+                        {% if departamento.responsable %}
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="avatar-initial-sm">
+                                    {{ departamento.responsable.nombre|first|upper }}{{ departamento.responsable.apellido_paterno|first|upper }}
+                                </div>
+                                <a href="{% url 'rrhh:empleado_detalle' departamento.responsable.pk %}"
+                                   class="text-decoration-none">
+                                    {{ departamento.responsable.nombre_completo }}
+                                </a>
+                            </div>
+                        {% else %}
+                            <span class="text-muted">Sin asignar</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt class="col-sm-5">Estado</dt>
+                    <dd class="col-sm-7">
+                        {% if departamento.activo %}
+                            <span class="badge bg-success">Activo</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inactivo</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt class="col-sm-5">Creado</dt>
+                    <dd class="col-sm-7">{{ departamento.created_at|date:"d/m/Y H:i" }}</dd>
+
+                    <dt class="col-sm-5">Última modificación</dt>
+                    <dd class="col-sm-7">{{ departamento.updated_at|date:"d/m/Y H:i" }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- Descripción -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 text-primary">
+                    <i class="bi bi-file-text"></i> Descripción
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if departamento.descripcion %}
+                    <p class="mb-0" style="white-space: pre-line;">
+                        {{ departamento.descripcion }}
+                    </p>
+                {% else %}
+                    <p class="text-muted fst-italic mb-0">
+                        Sin descripción registrada.
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Subdepartamentos -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 text-primary">
+                    <i class="bi bi-diagram-2"></i> Subdepartamentos ({{ subdepartamentos|length }})
+                </h6>
+                {% if user.perfil.es_rrhh %}
+                    <a href="{% url 'rrhh:departamento_crear' %}?padre={{ departamento.pk }}"
+                       class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-lg"></i> Nuevo subdepartamento
+                    </a>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                {% if subdepartamentos %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 130px;">Código</th>
+                                    <th>Nombre</th>
+                                    <th>Responsable</th>
+                                    <th class="text-center">Empleados</th>
+                                    <th class="text-center">Sub-deptos</th>
+                                    <th class="text-center">Estado</th>
+                                    <th class="text-end" style="width: 80px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sub in subdepartamentos %}
+                                    <tr>
+                                        <td>
+                                            <span class="badge bg-light text-dark font-monospace">
+                                                {{ sub.codigo }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="depto-icon-sm">
+                                                    <i class="bi bi-diagram-3"></i>
+                                                </div>
+                                                <a href="{% url 'rrhh:departamento_detalle' sub.pk %}"
+                                                   class="text-decoration-none fw-medium">
+                                                    {{ sub.nombre }}
+                                                </a>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if sub.responsable %}
+                                                {{ sub.responsable.nombre_completo }}
+                                            {% else %}
+                                                <span class="text-muted small">—</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-info text-dark">
+                                                {{ sub.empleados.count }}
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-secondary">
+                                                {{ sub.subdepartamentos.count }}
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            {% if sub.activo %}
+                                                <span class="badge bg-success">Activo</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Inactivo</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            <a href="{% url 'rrhh:departamento_detalle' sub.pk %}"
+                                               class="btn btn-sm btn-outline-primary"
+                                               title="Ver">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-diagram-2" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0 small">
+                            Este departamento no tiene subdepartamentos.
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Empleados del departamento -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 text-primary">
+                    <i class="bi bi-people"></i> Empleados del departamento ({{ empleados|length }})
+                </h6>
+                {% if user.perfil.es_rrhh %}
+                    <a href="{% url 'rrhh:empleado_crear' %}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-lg"></i> Asignar empleado
+                    </a>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                {% if empleados %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 110px;">Número</th>
+                                    <th>Empleado</th>
+                                    <th>Cédula</th>
+                                    <th>Cargo</th>
+                                    <th>Sede</th>
+                                    <th class="text-end">Salario</th>
+                                    <th class="text-center">Estatus</th>
+                                    <th class="text-end" style="width: 80px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for emp in empleados %}
+                                    <tr>
+                                        <td>
+                                            <span class="badge bg-light text-dark font-monospace">
+                                                {{ emp.numero_empleado }}
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="avatar-initial">
+                                                    {{ emp.nombre|first|upper }}{{ emp.apellido_paterno|first|upper }}
+                                                </div>
+                                                <div>
+                                                    <a href="{% url 'rrhh:empleado_detalle' emp.pk %}"
+                                                       class="text-decoration-none fw-medium">
+                                                        {{ emp.nombre_completo }}
+                                                    </a>
+                                                    <div class="text-muted small">
+                                                        {{ emp.email }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <td class="font-monospace small">
+                                            {{ emp.cedula_completa }}
+                                        </td>
+
+                                        <td class="small">
+                                            {{ emp.cargo.nombre|default:"—" }}
+                                        </td>
+
+                                        <td class="small">
+                                            {% if emp.sede %}
+                                                <i class="bi bi-geo-alt text-muted"></i>
+                                                {{ emp.sede.nombre }}
+                                            {% else %}
+                                                <span class="text-muted">—</span>
+                                            {% endif %}
+                                        </td>
+
+                                        <td class="text-end font-monospace small">
+                                            Bs. {{ emp.salario_base|floatformat:2 }}
+                                        </td>
+
+                                        <td class="text-center">
+                                            {% if emp.estatus == "activo" %}
+                                                <span class="badge bg-success">Activo</span>
+                                            {% elif emp.estatus == "baja" %}
+                                                <span class="badge bg-danger">Baja</span>
+                                            {% elif emp.estatus == "licencia" %}
+                                                <span class="badge bg-warning text-dark">Licencia</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">
+                                                    {{ emp.get_estatus_display }}
+                                                </span>
+                                            {% endif %}
+                                        </td>
+
+                                        <td class="text-end">
+                                            <a href="{% url 'rrhh:empleado_detalle' emp.pk %}"
+                                               class="btn btn-sm btn-outline-primary"
+                                               title="Ver empleado">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-people" style="font-size: 2.5rem;"></i>
+                        <h5 class="mt-3 mb-1">No hay empleados en este departamento</h5>
+                        <p class="mb-3 small">
+                            Los empleados asignados a este departamento aparecerán aquí.
+                        </p>
+                        {% if user.perfil.es_rrhh %}
+                            <a href="{% url 'rrhh:empleado_crear' %}"
+                               class="btn btn-primary btn-sm">
+                                <i class="bi bi-plus-lg"></i> Crear empleado
+                            </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .depto-avatar {
+        display: inline-flex;
+        width: 72px;
+        height: 72px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);
+        color: #fff;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        flex-shrink: 0;
+    }
+
+    .depto-icon-sm {
+        display: inline-flex;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+        color: #0369a1;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    .kpi-icon {
+        display: inline-flex;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+    }
+    .kpi-icon-primary {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    .kpi-icon-info {
+        background: #e0f2fe;
+        color: #0369a1;
+    }
+    .kpi-icon-warning {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    .kpi-icon-success {
+        background: #d1fae5;
+        color: #059669;
+    }
+
+    .detail-list dt {
+        color: #6b7280;
+        font-weight: 500;
+        font-size: 0.9rem;
+        padding-bottom: 0.5rem;
+    }
+    .detail-list dd {
+        font-size: 0.95rem;
+        padding-bottom: 0.5rem;
+    }
+
+    .avatar-initial {
+        display: inline-flex;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        color: #fff;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .avatar-initial-sm {
+        display: inline-flex;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        color: #fff;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+</style>
+
+{% endblock %}

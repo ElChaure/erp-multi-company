@@ -1,0 +1,128 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Balance General - Contabilidad{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="mb-1"><i class="bi bi-clipboard-data text-primary"></i> Balance General</h1>
+        <p class="text-muted mb-0 small">{{ empresa.razon_social }} · Al 31/12/{{ filtros.anio }}</p>
+    </div>
+    {% if cuadra %}
+        <span class="badge bg-success fs-6"><i class="bi bi-check-circle-fill"></i> Cuadra</span>
+    {% else %}
+        <span class="badge bg-danger fs-6"><i class="bi bi-x-circle-fill"></i> No cuadra</span>
+    {% endif %}
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small">Año</label>
+                <input type="number" name="anio" class="form-control form-control-sm" value="{{ filtros.anio }}">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-search"></i> Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- ACTIVOS -->
+<!-- ACTIVOS -->
+<div class="col-lg-6">
+    <div class="card h-100">
+        <div class="card-header bg-primary text-white">
+            <h6 class="mb-0">ACTIVO</h6>
+        </div>
+        <div class="card-body">
+            {% if activos %}
+            <table class="table table-sm table-borderless mb-0">
+                {% for a in activos %}
+                <tr>
+                    <td class="small">{{ a.codigo }} - {{ a.nombre }}</td>
+                    <td class="text-end small">
+                        {% if a.es_resta %}
+                            (Bs. {{ a.monto|floatformat:2 }})
+                        {% else %}
+                            Bs. {{ a.monto|floatformat:2 }}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+            {% else %}
+            <p class="text-muted small">Sin movimientos.</p>
+            {% endif %}
+        </div>
+        <div class="card-footer bg-light">
+            <strong>Total Activo:</strong> Bs. {{ total_activos|floatformat:2 }}
+        </div>
+    </div>
+</div>
+
+    <!-- PASIVO + PATRIMONIO -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-secondary text-white">
+                <h6 class="mb-0">PASIVO Y PATRIMONIO</h6>
+            </div>
+            <div class="card-body">
+                <h6 class="small text-uppercase text-muted">Pasivos</h6>
+                {% if pasivos %}
+                <table class="table table-sm table-borderless mb-0">
+                    {% for p in pasivos %}
+                    <tr>
+                        <td class="small">{{ p.codigo }} - {{ p.nombre }}</td>
+                        <td class="text-end small">Bs. {{ p.monto|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="table-light fw-bold">
+                        <td>Total Pasivos</td>
+                        <td class="text-end">Bs. {{ total_pasivos|floatformat:2 }}</td>
+                    </tr>
+                </table>
+                {% else %}
+                <p class="text-muted small">Sin pasivos registrados.</p>
+                {% endif %}
+
+                <h6 class="small text-uppercase text-muted mt-3">Patrimonio</h6>
+                {% if patrimonio %}
+                <table class="table table-sm table-borderless mb-0">
+                    {% for p in patrimonio %}
+                    <tr>
+                        <td class="small">{{ p.codigo }} - {{ p.nombre }}</td>
+                        <td class="text-end small">Bs. {{ p.monto|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                {% endif %}
+                <table class="table table-sm table-borderless mb-0">
+                    <tr>
+                        <td class="small">Utilidad del Ejercicio</td>
+                        <td class="text-end small {% if utilidad_ejercicio >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            Bs. {{ utilidad_ejercicio|floatformat:2 }}
+                        </td>
+                    </tr>
+                    <tr class="table-light fw-bold">
+                        <td>Total Patrimonio</td>
+                        <td class="text-end">Bs. {{ total_patrimonio|floatformat:2 }}</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="card-footer bg-light">
+                <strong>Total Pasivo + Patrimonio:</strong> Bs. {{ total_pasivo_patrimonio|floatformat:2 }}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not cuadra %}
+<div class="alert alert-danger mt-4">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <strong>Atención:</strong> El balance no cuadra. Diferencia: Bs. {{ total_activos|floatformat:2 }} vs Bs. {{ total_pasivo_patrimonio|floatformat:2 }}. Revisa los asientos del período.
+</div>
+{% endif %}
+
+{% endblock %}

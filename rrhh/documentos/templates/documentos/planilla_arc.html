@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+    @page {
+        size: letter landscape;
+        margin: 1.5cm 1.5cm 1.5cm 1.5cm;
+    }
+    body {
+        font-family: "Helvetica", "Arial", sans-serif;
+        font-size: 9pt;
+        color: #1a1a1a;
+        line-height: 1.3;
+    }
+    .header {
+        border-bottom: 2px solid #333;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+    .header td {
+        vertical-align: top;
+    }
+    .logo {
+        max-width: 70px;
+        max-height: 70px;
+    }
+    .titulo {
+        text-align: center;
+        font-size: 14pt;
+        font-weight: bold;
+        letter-spacing: 2px;
+        margin: 10px 0 5px 0;
+        text-transform: uppercase;
+    }
+    .subtitulo {
+        text-align: center;
+        font-size: 11pt;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    .periodo {
+        text-align: center;
+        font-size: 11pt;
+        margin-bottom: 15px;
+        font-weight: bold;
+    }
+    .numero-control {
+        text-align: right;
+        font-size: 9pt;
+        color: #555;
+        margin-bottom: 10px;
+    }
+    .info-bloque {
+        margin-bottom: 12px;
+    }
+    .info-bloque table {
+        width: 100%;
+    }
+    .info-bloque td {
+        padding: 2px 8px;
+        font-size: 9pt;
+    }
+    .info-label {
+        font-weight: bold;
+        width: 150px;
+        color: #333;
+    }
+    table.datos {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 8.5pt;
+    }
+    table.datos th {
+        background-color: #333;
+        color: #fff;
+        padding: 5px 4px;
+        border: 1px solid #333;
+        text-align: center;
+        font-size: 8pt;
+        text-transform: uppercase;
+    }
+    table.datos td {
+        padding: 4px 5px;
+        border: 1px solid #ccc;
+        text-align: right;
+    }
+    table.datos td.mes {
+        text-align: left;
+        font-weight: bold;
+    }
+    table.datos tr.total td {
+        background-color: #f0f0f0;
+        font-weight: bold;
+        border-top: 2px solid #333;
+    }
+    .footer-totales {
+        margin-top: 15px;
+        padding: 8px 10px;
+        background-color: #f5f5f5;
+        border: 1px solid #ddd;
+    }
+    .footer-totales table {
+        width: 100%;
+    }
+    .footer-totales td {
+        padding: 3px 8px;
+        font-size: 9pt;
+    }
+    .footer-totales .label {
+        font-weight: bold;
+        width: 180px;
+    }
+    .monto-letras {
+        margin-top: 10px;
+        padding: 8px;
+        border: 1px solid #999;
+        background-color: #fafafa;
+        font-size: 9pt;
+        text-align: justify;
+    }
+    .firmas {
+        margin-top: 30px;
+        text-align: center;
+    }
+    .firma-bloque {
+        display: inline-block;
+        width: 45%;
+        text-align: center;
+        vertical-align: top;
+    }
+    .firma-imagen {
+        max-width: 180px;
+        max-height: 50px;
+    }
+    .sello-imagen {
+        max-width: 130px;
+        max-height: 70px;
+    }
+    .firma-linea {
+        border-top: 1px solid #333;
+        width: 80%;
+        margin: 5px auto;
+        padding-top: 5px;
+    }
+    .firma-nombre {
+        font-weight: bold;
+        font-size: 9pt;
+    }
+    .firma-cargo {
+        font-size: 8pt;
+        color: #555;
+    }
+</style>
+</head>
+<body>
+
+<!-- ENCABEZADO -->
+<table class="header" width="100%">
+    <tr>
+        {% if logo_base64 %}
+        <td width="80">
+            <img src="data:image/png;base64,{{ logo_base64 }}" class="logo" alt="Logo">
+        </td>
+        {% endif %}
+        <td>
+            <div style="font-size: 12pt; font-weight: bold;">{{ empresa.razon_social }}</div>
+            <div style="font-size: 9pt;">RIF: {{ empresa.rif }}</div>
+            <div style="font-size: 8.5pt;">{{ empresa.direccion }}</div>
+            {% if empresa.ciudad %}<div style="font-size: 8.5pt;">{{ empresa.ciudad }}{% if empresa.estado %}, {{ empresa.estado }}{% endif %}</div>{% endif %}
+        </td>
+        <td width="200" style="text-align: right; font-size: 8.5pt; color: #555;">
+            <div>Nº de Control:</div>
+            <div style="font-weight: bold; font-size: 10pt; color: #000;">{{ numero_control }}</div>
+        </td>
+    </tr>
+</table>
+
+<!-- TÍTULOS -->
+<div class="titulo">Comprobante de Agente de Retención</div>
+<div class="subtitulo">PLANILLA AR-C</div>
+<div class="periodo">PERÍODO: {{ periodo_inicio }} AL {{ periodo_fin }}</div>
+
+<!-- DATOS DEL AGENTE DE RETENCIÓN Y BENEFICIARIO -->
+<div class="info-bloque">
+    <table>
+        <tr>
+            <td class="info-label">Nombre y Apellido:</td>
+            <td>{{ empleado.nombre_completo }}</td>
+            <td class="info-label">C.I. Nro:</td>
+            <td>{{ empleado.cedula }}</td>
+        </tr>
+        <tr>
+            <td class="info-label">RIF:</td>
+            <td>{{ empleado.rif|default:"—" }}</td>
+            <td class="info-label">Cargo:</td>
+            <td>{{ empleado.cargo.nombre|default:"—" }}</td>
+        </tr>
+        <tr>
+            <td class="info-label">Organismo / Empresa:</td>
+            <td colspan="3">{{ empresa.razon_social }}</td>
+        </tr>
+        <tr>
+            <td class="info-label">RIF Organismo:</td>
+            <td>{{ empresa.rif }}</td>
+            <td class="info-label">Agente de Retención:</td>
+            <td>{{ nombre_firmante|default:"—" }}</td>
+        </tr>
+        <tr>
+            <td class="info-label">Dirección:</td>
+            <td colspan="3">{{ empresa.direccion }}{% if empresa.ciudad %} — {{ empresa.ciudad }}{% endif %}</td>
+        </tr>
+    </table>
+</div>
+
+<!-- TABLA DE DATOS MENSUALES -->
+<table class="datos">
+    <thead>
+        <tr>
+            <th width="10%">Mes</th>
+            <th width="15%">Devengado Mensual</th>
+            <th width="10%">% ISLR</th>
+            <th width="15%">Retención Mensual</th>
+            <th width="20%">Acumulado Devengado</th>
+            <th width="20%">Acumulado Retención</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for fila in filas %}
+        <tr>
+            <td class="mes">{{ fila.mes_nombre }}</td>
+            <td>{{ fila.devengado|floatformat:2 }}</td>
+            <td style="text-align: center;">{{ fila.pct_islr|floatformat:2 }}</td>
+            <td>{{ fila.retencion|floatformat:2 }}</td>
+            <td>{{ fila.acumulado_devengado|floatformat:2 }}</td>
+            <td>{{ fila.acumulado_retencion|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="total">
+            <td class="mes">TOTALES</td>
+            <td>{{ total_devengado|floatformat:2 }}</td>
+            <td>—</td>
+            <td>{{ total_retenido|floatformat:2 }}</td>
+            <td>{{ total_devengado|floatformat:2 }}</td>
+            <td>{{ total_retenido|floatformat:2 }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- TOTALES SSO / SPF / LPH -->
+<div class="footer-totales">
+    <table>
+        <tr>
+            <td class="label">ACUMULADO SSO:</td>
+            <td>{{ total_sso|floatformat:2 }}</td>
+            <td class="label">ACUMULADO SPF:</td>
+            <td>{{ total_spf|floatformat:2 }}</td>
+        </tr>
+        <tr>
+            <td class="label">ACUMULADO LPH:</td>
+            <td>{{ total_lph|floatformat:2 }}</td>
+            <td class="label">ACUMULADO OTROS:</td>
+            <td>{{ total_otros|floatformat:2 }}</td>
+        </tr>
+    </table>
+</div>
+
+<!-- MONTO EN LETRAS -->
+<div class="monto-letras">
+    <strong>MONTO TOTAL DEVENGADO EN LETRAS:</strong><br>
+    {{ monto_en_letras }}
+</div>
+
+<!-- FIRMA Y SELLO -->
+<div class="firmas">
+    <div class="firma-bloque">
+        {% if firma_base64 %}
+        <div>
+            <img src="data:image/png;base64,{{ firma_base64 }}" class="firma-imagen" alt="Firma">
+        </div>
+        {% endif %}
+        <div class="firma-linea"></div>
+        <div class="firma-nombre">{{ nombre_firmante|default:"________________________" }}</div>
+        <div class="firma-cargo">{{ cargo_firmante|default:"Agente de Retención" }}</div>
+    </div>
+    <div class="firma-bloque">
+        {% if sello_base64 %}
+        <img src="data:image/png;base64,{{ sello_base64 }}" class="sello-imagen" alt="Sello">
+        {% endif %}
+    </div>
+</div>
+
+</body>
+</html>

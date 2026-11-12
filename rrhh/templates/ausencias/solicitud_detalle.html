@@ -1,0 +1,275 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Solicitud #{{ solicitud.id }} - RRHH{% endblock %}
+
+{% block content %}
+{# HEADER #}
+<div class="d-flex flex-wrap justify-content-between align-items-start mb-4 gap-3">
+    <div>
+        <a href="{% url 'rrhh:solicitud_lista' %}" class="text-muted small text-decoration-none">
+            <i class="bi bi-arrow-left"></i> Volver a solicitudes
+        </a>
+        <h1 class="mb-1 mt-1">
+            Solicitud #{{ solicitud.id }}
+            <small class="text-muted fs-6">· {{ solicitud.tipo.nombre }}</small>
+        </h1>
+        <p class="text-muted mb-0 small">
+            Solicitada el {{ solicitud.fecha_solicitud|date:"d/m/Y H:i" }}
+        </p>
+    </div>
+    <div class="text-end">
+        {% if solicitud.estatus == "pendiente" %}
+        <span class="badge bg-warning text-dark fs-6">Pendiente</span>
+        {% elif solicitud.estatus == "aprobada" %}
+        <span class="badge bg-success fs-6">Aprobada</span>
+        {% elif solicitud.estatus == "rechazada" %}
+        <span class="badge bg-danger fs-6">Rechazada</span>
+        {% elif solicitud.estatus == "cancelada" %}
+        <span class="badge bg-secondary fs-6">Cancelada</span>
+        {% elif solicitud.estatus == "en_disfrute" %}
+        <span class="badge bg-info text-dark fs-6">En disfrute</span>
+        {% endif %}
+    </div>
+</div>
+
+{# DATOS #}
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0">
+                    <i class="bi bi-info-circle text-primary"></i>
+                    Detalle de la solicitud
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5">Empleado</dt>
+                            <dd class="col-sm-7">
+                                <a href="{% url 'rrhh:empleado_detalle' solicitud.empleado.id %}"
+                                   class="text-decoration-none">
+                                    {{ solicitud.empleado.nombre_completo }}
+                                </a>
+                                <div class="text-muted small">
+                                    {{ solicitud.empleado.numero_empleado }}
+                                </div>
+                            </dd>
+
+                            <dt class="col-sm-5">Cargo</dt>
+                            <dd class="col-sm-7">{{ solicitud.empleado.cargo.nombre|default:"—" }}</dd>
+
+                            <dt class="col-sm-5">Departamento</dt>
+                            <dd class="col-sm-7">{{ solicitud.empleado.departamento.nombre|default:"—" }}</dd>
+
+                            <dt class="col-sm-5">Tipo</dt>
+                            <dd class="col-sm-7">{{ solicitud.tipo.nombre }}</dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5">Fecha inicio</dt>
+                            <dd class="col-sm-7">{{ solicitud.fecha_inicio|date:"d/m/Y" }}</dd>
+
+                            <dt class="col-sm-5">Fecha fin</dt>
+                            <dd class="col-sm-7">{{ solicitud.fecha_fin|date:"d/m/Y" }}</dd>
+
+                            <dt class="col-sm-5">Días hábiles</dt>
+                            <dd class="col-sm-7">
+                                <strong class="text-primary">{{ solicitud.dias_solicitados|floatformat:0 }}</strong>
+                            </dd>
+
+                            <dt class="col-sm-5">Reincorporación</dt>
+                            <dd class="col-sm-7">
+                                {{ solicitud.fecha_reincorporacion|date:"d/m/Y"|default:"—" }}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <hr>
+
+                <h6 class="small text-muted text-uppercase">Motivo</h6>
+                <p class="mb-0">{{ solicitud.motivo|linebreaksbr }}</p>
+
+                {% if solicitud.comentario_aprobador %}
+                <hr>
+                <h6 class="small text-muted text-uppercase">Comentario del aprobador</h6>
+                <p class="mb-0">{{ solicitud.comentario_aprobador|linebreaksbr }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {# Saldo del empleado #}
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0">
+                    <i class="bi bi-sun text-warning"></i>
+                    Saldo del empleado
+                </h6>
+            </div>
+            <div class="card-body text-center">
+                {% if saldo %}
+                <h6 class="text-muted small mb-2">Año {{ saldo.anio }}</h6>
+                <div class="display-4 fw-bold text-warning">{{ saldo.dias_pendientes|floatformat:0 }}</div>
+                <small class="text-muted">días disponibles</small>
+
+                <hr>
+
+                <div class="row small">
+                    <div class="col-4">
+                        <div class="text-muted">Derecho</div>
+                        <strong>{{ saldo.dias_derecho|floatformat:0 }}</strong>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-muted">Tomados</div>
+                        <strong>{{ saldo.dias_tomados|floatformat:0 }}</strong>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-muted">Ajustes</div>
+                        <strong>{{ saldo.dias_ajuste|floatformat:0 }}</strong>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-muted">Sin saldo registrado para este año.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ACCIONES #}
+{% if puede_aprobar %}
+<div class="card border-warning mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <strong>Esta solicitud está pendiente de tu aprobación.</strong>
+                <div class="small text-muted">
+                    Al aprobar, se descontarán
+                    <strong>{{ solicitud.dias_solicitados|floatformat:0 }} días</strong>
+                    del saldo del empleado.
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modal-rechazar">
+                    <i class="bi bi-x-circle"></i> Rechazar
+                </button>
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modal-aprobar">
+                    <i class="bi bi-check-circle"></i> Aprobar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# Cancelar (si aplica) #}
+{% if solicitud.puede_cancelar %}
+<div class="text-end mb-4">
+    <button type="button" class="btn btn-sm btn-outline-secondary"
+            data-bs-toggle="modal" data-bs-target="#modal-cancelar">
+        <i class="bi bi-x-square"></i> Cancelar solicitud
+    </button>
+</div>
+{% endif %}
+
+{# MODALES #}
+{% if puede_aprobar %}
+{# Modal Aprobar #}
+<div class="modal fade" id="modal-aprobar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'rrhh:solicitud_aprobar' solicitud.id %}">
+                {% csrf_token %}
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="bi bi-check-circle"></i> Aprobar solicitud</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Vas a aprobar la solicitud de <strong>{{ solicitud.empleado.nombre_completo }}</strong>.</p>
+                    <div class="alert alert-info small mb-3">
+                        <i class="bi bi-info-circle"></i>
+                        Se descontarán <strong>{{ solicitud.dias_solicitados|floatformat:0 }} días</strong> de su saldo
+                        y se generará una incidencia de nómina.
+                    </div>
+                    <label class="form-label small">Comentario (opcional)</label>
+                    <textarea name="comentario" class="form-control" rows="2"
+                              placeholder="Ej: Aprobado, coordinar con el equipo"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check2-circle"></i> Sí, aprobar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# Modal Rechazar #}
+<div class="modal fade" id="modal-rechazar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'rrhh:solicitud_rechazar' solicitud.id %}">
+                {% csrf_token %}
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-x-circle"></i> Rechazar solicitud</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Vas a rechazar la solicitud de <strong>{{ solicitud.empleado.nombre_completo }}</strong>.</p>
+                    <label class="form-label small">Motivo del rechazo *</label>
+                    <textarea name="comentario" class="form-control" rows="3" required
+                              placeholder="Explicá el motivo del rechazo al empleado"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x-circle"></i> Sí, rechazar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# Modal Cancelar #}
+{% if solicitud.puede_cancelar %}
+<div class="modal fade" id="modal-cancelar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'rrhh:solicitud_cancelar' solicitud.id %}">
+                {% csrf_token %}
+                <div class="modal-header bg-secondary text-white">
+                    <h5 class="modal-title"><i class="bi bi-x-square"></i> Cancelar solicitud</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {% if solicitud.estatus == "aprobada" %}
+                    <div class="alert alert-warning small mb-3">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Esta solicitud ya está aprobada. Al cancelarla se
+                        <strong>devolverán los días al saldo</strong> del empleado.
+                    </div>
+                    {% endif %}
+                    <label class="form-label small">Motivo (opcional)</label>
+                    <textarea name="motivo" class="form-control" rows="2"
+                              placeholder="Motivo de la cancelación"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-secondary">
+                        <i class="bi bi-x-square"></i> Sí, cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

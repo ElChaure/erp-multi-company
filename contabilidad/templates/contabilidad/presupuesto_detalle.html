@@ -1,0 +1,340 @@
+{% extends "rrhh/base.html" %}
+{% load l10n %}
+{% block title %}Presupuesto — {{ presupuesto.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  {# ═══════════════ ENCABEZADO ═══════════════ #}
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h4 class="mb-0">
+        <i class="bi bi-bullseye text-primary"></i>
+        {{ presupuesto.nombre }}
+      </h4>
+      <small class="text-muted">
+        Ejercicio {{ presupuesto.ejercicio.anio }} ·
+        {{ empresa.razon_social }}
+      </small>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'contabilidad:presupuesto_vs_real' presupuesto.id %}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-bar-chart-line"></i> Presupuesto vs Real
+      </a>
+      <a href="{% url 'contabilidad:dashboard_gerencial' presupuesto.id %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-speedometer2"></i> Dashboard
+      </a>
+      <a href="{% url 'contabilidad:presupuesto_lista' %}" class="btn btn-outline-dark btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+      </a>
+    </div>
+  </div>
+
+  {# ═══════════════ FORM ═══════════════ #}
+  <form method="post" id="form-presupuesto">
+    {% csrf_token %}
+
+    <div class="card shadow-sm">
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height: 75vh; overflow-y: auto;">
+          <table class="table table-sm table-bordered align-middle mb-0" id="tabla-presupuesto">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th style="min-width: 280px;">Cuenta</th>
+                <th style="min-width: 180px;">Centro de Costo</th>
+                {% for key, label in meses %}
+                  <th class="text-end" style="min-width: 90px;">{{ label }}</th>
+                {% endfor %}
+                <th class="text-end" style="min-width: 110px;">Total</th>
+                <th style="min-width: 60px;" class="text-center">Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for bloque in cuentas_con_linea %}
+                {% for fila in bloque.lineas %}
+                  <tr class="fila-presupuesto"
+                      data-cuenta-id="{{ bloque.cuenta.id }}"
+                      data-linea-key="{{ fila.linea_key }}"
+                      data-es-primera-fila="{% if forloop.first %}1{% else %}0{% endif %}"
+                      data-total-filas="{{ bloque.lineas|length }}">
+
+                    {% if forloop.first %}
+                      <td rowspan="{{ bloque.lineas|length }}" class="align-middle bg-white">
+                        <div class="fw-semibold">
+                          {{ bloque.cuenta.codigo }} — {{ bloque.cuenta.nombre }}
+                        </div>
+                        <small class="text-muted">{{ bloque.cuenta.get_tipo_display }}</small>
+                        {% if bloque.cuenta.es_cuenta_de_costo %}
+                          <span class="badge bg-info text-dark ms-1">Costo</span>
+                        {% endif %}
+                        <div class="mt-2">
+                          <button type="button"
+                                  class="btn btn-outline-primary btn-sm btn-agregar-cc"
+                                  data-cuenta-id="{{ bloque.cuenta.id }}">
+                            <i class="bi bi-plus-circle"></i> Agregar CC
+                          </button>
+                        </div>
+                      </td>
+                    {% endif %}
+
+                    <td>
+                      <select name="centro_id_{{ fila.linea_key }}"
+                              class="form-select form-select-sm select-centro"
+                              {% if fila.linea %}disabled title="El CC no se puede cambiar una vez creada la línea. Elimínala y crea otra."{% endif %}>
+                        <option value="">— Sin CC —</option>
+                        {% for cc in centros %}
+                          <option value="{{ cc.id }}"
+                            {% if fila.centro and fila.centro.id == cc.id %}selected{% endif %}>
+                            {{ cc.codigo }} — {{ cc.nombre }}
+                          </option>
+                        {% endfor %}
+                      </select>
+                      {% if fila.linea %}
+                        <input type="hidden" name="centro_id_{{ fila.linea_key }}" value="{{ fila.centro.id|default:'' }}">
+                      {% endif %}
+                    </td>
+
+                    {% for mes in fila.valores_meses %}
+                      <td>
+                        <input type="number"
+                               step="0.01"
+                               min="0"
+                               class="form-control form-control-sm text-end input-monto"
+                               name="monto_{{ mes.key }}_{{ fila.linea_key }}"
+                               value="{{ mes.monto|unlocalize }}"
+                               data-cuenta-id="{{ bloque.cuenta.id }}">
+                      </td>
+                    {% endfor %}
+
+                    <td class="text-end fw-semibold subtotal-fila">0.00</td>
+
+                    <td class="text-center">
+                      {% if not forloop.first or bloque.lineas|length > 1 %}
+                        <button type="button"
+                                class="btn btn-outline-danger btn-sm btn-eliminar-fila"
+                                title="Quitar esta fila">
+                          <i class="bi bi-x-lg"></i>
+                        </button>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+
+                <tr class="table-light total-cuenta-row" data-cuenta-id="{{ bloque.cuenta.id }}">
+                  <td colspan="2" class="text-end fw-bold">Total cuenta {{ bloque.cuenta.codigo }}:</td>
+                  {% for _ in meses %}
+                    <td></td>
+                  {% endfor %}
+                  <td class="text-end fw-bold total-cuenta-valor">0.00</td>
+                  <td></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card-footer d-flex justify-content-between align-items-center">
+        <small class="text-muted">
+          <i class="bi bi-info-circle"></i>
+          Cada cuenta puede tener varias líneas (una por Centro de Costo).
+          Los campos vacíos se guardan como 0.
+        </small>
+        <div>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save"></i> Guardar Presupuesto
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+{# ═══════════════ TEMPLATE OCULTO PARA AGREGAR FILAS ═══════════════ #}
+<template id="tpl-fila-nueva">
+  <tr class="fila-presupuesto fila-nueva" data-cuenta-id="" data-linea-key="">
+    <td>
+      <select name="" class="form-select form-select-sm select-centro">
+        <option value="">— Sin CC —</option>
+        {% for cc in centros %}
+          <option value="{{ cc.id }}">{{ cc.codigo }} — {{ cc.nombre }}</option>
+        {% endfor %}
+      </select>
+    </td>
+    {% for key, label in meses %}
+      <td>
+        <input type="number"
+               step="0.01"
+               min="0"
+               class="form-control form-control-sm text-end input-monto"
+               value="0.00">
+      </td>
+    {% endfor %}
+    <td class="text-end fw-semibold subtotal-fila">0.00</td>
+    <td class="text-center">
+      <button type="button" class="btn btn-outline-danger btn-sm btn-eliminar-fila" title="Quitar esta fila">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </td>
+  </tr>
+</template>
+
+<style>
+  .input-monto {
+    min-width: 80px;
+  }
+  .fila-presupuesto:hover {
+    background-color: #f8fafc;
+  }
+  .fila-nueva {
+    background-color: #fffbea;
+  }
+</style>
+
+<script>
+(function () {
+  "use strict";
+
+  const form = document.getElementById("form-presupuesto");
+  const tabla = document.getElementById("tabla-presupuesto");
+  const tpl = document.getElementById("tpl-fila-nueva");
+  let contadorNuevas = 0;
+
+  function toFloat(v) {
+    if (typeof v !== "string") v = String(v || "");
+    const normalizado = v.replace(",", ".");
+    const n = parseFloat(normalizado);
+    return isFinite(n) ? n : 0;
+  }
+  function fmt(n) {
+    return n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function recalcularFila(tr) {
+    let total = 0;
+    tr.querySelectorAll(".input-monto").forEach(function (inp) {
+      total += toFloat(inp.value);
+    });
+    const celdaSub = tr.querySelector(".subtotal-fila");
+    if (celdaSub) celdaSub.textContent = fmt(total);
+  }
+
+  function recalcularCuenta(cuentaId) {
+    let totalCuenta = 0;
+    tabla.querySelectorAll('tr.fila-presupuesto[data-cuenta-id="' + cuentaId + '"]').forEach(function (tr) {
+      if (tr.style.display === "none") return;
+      tr.querySelectorAll(".input-monto").forEach(function (inp) {
+        totalCuenta += toFloat(inp.value);
+      });
+    });
+    const celdaTotal = tabla.querySelector(
+      'tr.total-cuenta-row[data-cuenta-id="' + cuentaId + '"] .total-cuenta-valor'
+    );
+    if (celdaTotal) celdaTotal.textContent = fmt(totalCuenta);
+  }
+
+  function recalcularTodo() {
+    const cuentasVistas = new Set();
+    tabla.querySelectorAll("tr.fila-presupuesto").forEach(function (tr) {
+      recalcularFila(tr);
+      cuentasVistas.add(tr.dataset.cuentaId);
+    });
+    cuentasVistas.forEach(function (id) {
+      recalcularCuenta(id);
+    });
+  }
+
+  tabla.addEventListener("input", function (e) {
+    if (!e.target.classList.contains("input-monto")) return;
+    const tr = e.target.closest("tr.fila-presupuesto");
+    if (!tr) return;
+    recalcularFila(tr);
+    recalcularCuenta(tr.dataset.cuentaId);
+  });
+
+  tabla.addEventListener("click", function (e) {
+    const btn = e.target.closest(".btn-agregar-cc");
+    if (!btn) return;
+
+    const cuentaId = btn.dataset.cuentaId;
+    contadorNuevas += 1;
+    const lineaKey = "new_" + Date.now() + "_" + contadorNuevas;
+
+    const clone = tpl.content.firstElementChild.cloneNode(true);
+    clone.dataset.cuentaId = cuentaId;
+    clone.dataset.lineaKey = lineaKey;
+
+    const selectCentro = clone.querySelector(".select-centro");
+    selectCentro.name = "centro_id_" + lineaKey;
+
+    const filaReferencia = tabla.querySelector(
+      'tr.fila-presupuesto[data-cuenta-id="' + cuentaId + '"] .input-monto'
+    );
+    let mesKeys = [];
+    if (filaReferencia) {
+      const filasCuenta = tabla.querySelectorAll(
+        'tr.fila-presupuesto[data-cuenta-id="' + cuentaId + '"]'
+      );
+      if (filasCuenta.length > 0) {
+        filasCuenta[0].querySelectorAll(".input-monto").forEach(function (inp) {
+          const match = inp.name.match(/^monto_([a-z]+)_/);
+          if (match) mesKeys.push(match[1]);
+        });
+      }
+    }
+
+    clone.querySelectorAll(".input-monto").forEach(function (inp, idx) {
+      if (mesKeys[idx]) {
+        inp.name = "monto_" + mesKeys[idx] + "_" + lineaKey;
+      }
+    });
+
+    const filasCuenta = tabla.querySelectorAll('tr.fila-presupuesto[data-cuenta-id="' + cuentaId + '"]');
+    const ultimaFila = filasCuenta[filasCuenta.length - 1];
+    ultimaFila.insertAdjacentElement("afterend", clone);
+
+    recalcularFila(clone);
+    recalcularCuenta(cuentaId);
+  });
+
+  tabla.addEventListener("click", function (e) {
+    const btn = e.target.closest(".btn-eliminar-fila");
+    if (!btn) return;
+
+    const tr = btn.closest("tr.fila-presupuesto");
+    if (!tr) return;
+
+    const cuentaId = tr.dataset.cuentaId;
+    const filasMismaCuenta = tabla.querySelectorAll('tr.fila-presupuesto[data-cuenta-id="' + cuentaId + '"]');
+
+    if (filasMismaCuenta.length <= 1) {
+      alert("No se puede quitar la única línea de la cuenta. Deja los montos en 0 si quieres vaciarla.");
+      return;
+    }
+
+    if (!confirm("¿Quitar esta fila del formulario? (Los cambios se aplicarán al guardar)")) {
+      return;
+    }
+
+    if (tr.dataset.lineaKey && tr.dataset.lineaKey.startsWith("existing_")) {
+      tr.querySelectorAll("input, select").forEach(function (el) {
+        el.disabled = true;
+      });
+      tr.style.display = "none";
+      const primeraFila = filasMismaCuenta[0];
+      const celdaCuenta = primeraFila.querySelector("td[rowspan]");
+      if (celdaCuenta) {
+        const actual = parseInt(celdaCuenta.getAttribute("rowspan")) || 1;
+        if (actual > 1) celdaCuenta.setAttribute("rowspan", actual - 1);
+      }
+    } else {
+      tr.remove();
+    }
+
+    recalcularCuenta(cuentaId);
+  });
+
+  document.addEventListener("DOMContentLoaded", recalcularTodo);
+})();
+</script>
+{% endblock %}

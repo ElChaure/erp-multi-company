@@ -1,0 +1,80 @@
+{% extends "rrhh/base.html" %}
+{% block title %}Planilla ARC - {{ empleado.nombre_completo }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+    <div>
+        <a href="{% url 'rrhh:empleado_detalle' empleado.id %}" class="text-muted small text-decoration-none">
+            <i class="bi bi-arrow-left"></i> Volver al empleado
+        </a>
+        <h1 class="mb-1 mt-1">
+            <i class="bi bi-file-earmark-spreadsheet text-primary"></i>
+            Planilla AR-C
+        </h1>
+        <p class="text-muted mb-0 small">
+            {{ empleado.nombre_completo }} · {{ empleado.numero_empleado }}
+        </p>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <div class="alert alert-info small mb-3">
+                    <i class="bi bi-info-circle"></i>
+                    La Planilla AR-C es el comprobante anual de retenciones de ISLR.
+                    Debe emitirse por cada año fiscal.
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Año fiscal</label>
+                            <select name="anio_fiscal" class="form-select">
+                                {% for anio in anios_disponibles %}
+                                <option value="{{ anio }}" {% if anio == anio_actual %}selected{% endif %}>
+                                    {{ anio }} (01/01 al 31/12)
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Filtro por cargo (opcional)</label>
+                            <input type="text" name="cargo_filtro" class="form-control"
+                                   placeholder="Ej: Analista">
+                            <small class="text-muted">Si se completa, se muestra en el documento.</small>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-file-earmark-pdf"></i> Generar y descargar PDF
+                        </button>
+                        <a href="{% url 'rrhh:empleado_detalle' empleado.id %}" class="btn btn-outline-secondary">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6 class="small text-muted text-uppercase mb-3">
+                    <i class="bi bi-building"></i> Agente de Retención
+                </h6>
+                <ul class="small mb-0 ps-3">
+                    <li>{{ empresa.razon_social }}</li>
+                    <li>RIF: {{ empresa.rif }}</li>
+                    <li>{{ empresa.direccion }}</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "rrhh/base.html" %}
+{% block title %}{{ comprobante.numero }} - Contabilidad{% endblock %}
+{% block content %}
+
+<div class="mb-4">
+    <a href="{% url 'contabilidad:comprobante_lista' %}" class="text-muted small text-decoration-none">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+    <div class="d-flex justify-content-between align-items-center mt-1">
+        <div>
+            <h1 class="mb-1">{{ comprobante.numero }}</h1>
+            <p class="text-muted mb-0 small">{{ comprobante.fecha|date:"d/m/Y" }} · Período {{ comprobante.periodo.anio }}-{{ comprobante.periodo.mes|stringformat:"02d" }}</p>
+        </div>
+        <div>
+            {% if comprobante.estado == "borrador" %}
+                <span class="badge bg-warning text-dark fs-6">Borrador</span>
+            {% elif comprobante.estado == "contabilizado" %}
+                <span class="badge bg-success fs-6">Contabilizado</span>
+            {% else %}
+                <span class="badge bg-secondary fs-6">{{ comprobante.get_estado_display }}</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-2">Concepto</dt>
+            <dd class="col-sm-10">{{ comprobante.concepto }}</dd>
+            <dt class="col-sm-2">Estado</dt>
+            <dd class="col-sm-10">
+                {% if comprobante.cuadra %}
+                    <span class="text-success"><i class="bi bi-check-circle-fill"></i> Cuadra</span>
+                {% else %}
+                    <span class="text-danger"><i class="bi bi-x-circle-fill"></i> No cuadra</span>
+                {% endif %}
+            </dd>
+        </dl>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-white"><h6 class="mb-0">Líneas</h6></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Cuenta</th>
+                        <th>Centro Costo</th>
+                        <th>Descripción</th>
+                        <th class="text-end">Débito</th>
+                        <th class="text-end">Crédito</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in comprobante.lineas.all %}
+                    <tr>
+                        <td class="small">{{ l.cuenta.codigo }} - {{ l.cuenta.nombre }}</td>
+                        <td class="small">{{ l.centro_costo.codigo|default:"—" }}</td>
+                        <td class="small">{{ l.descripcion }}</td>
+                        <td class="text-end">Bs. {{ l.debito|floatformat:2 }}</td>
+                        <td class="text-end">Bs. {{ l.credito|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light fw-bold">
+                    <tr>
+                        <td colspan="3" class="text-end">Totales</td>
+                        <td class="text-end">Bs. {{ comprobante.total_debito|floatformat:2 }}</td>
+                        <td class="text-end">Bs. {{ comprobante.total_credito|floatformat:2 }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if comprobante.estado == "borrador" %}
+<div class="card border-success mb-4">
+    <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+            <strong>Contabilizar este comprobante</strong>
+            <div class="small text-muted">Se moverá a la tabla final (Asiento) y afectará los saldos contables.</div>
+        </div>
+        <form method="post" action="{% url 'contabilidad:comprobante_contabilizar' comprobante.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success" {% if not comprobante.cuadra %}disabled{% endif %}>
+                <i class="bi bi-check2-circle"></i> Contabilizar
+            </button>
+        </form>
+    </div>
+</div>
+{% elif comprobante.estado == "contabilizado" and comprobante.asiento_generado %}
+<div class="alert alert-success">
+    <i class="bi bi-check-circle-fill"></i> Contabilizado como Asiento <strong>N° {{ comprobante.asiento_generado.numero }}</strong>
+    <a href="{% url 'contabilidad:libro_diario' %}" class="ms-2">Ver libro diario</a>
+</div>
+{% endif %}
+
+{% endblock %}

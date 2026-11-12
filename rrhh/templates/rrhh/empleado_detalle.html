@@ -1,0 +1,340 @@
+{% extends "rrhh/base.html" %}
+
+{% block title %}{{ empleado.nombre_completo }} - RRHH System{% endblock %}
+
+{% block content %}
+
+<!-- ═══════════════════════════════════════════════════════════
+     ENCABEZADO CON AVATAR
+     ═══════════════════════════════════════════════════════════ -->
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
+    <div class="d-flex align-items-center gap-3">
+        <div class="avatar-large">
+            {{ empleado.nombre|first|upper }}{{ empleado.apellido_paterno|first|upper }}
+        </div>
+        <div>
+            <h1 class="mb-1">{{ empleado.nombre_completo }}</h1>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <span class="badge bg-light text-dark font-monospace">
+                    {{ empleado.numero_empleado }}
+                </span>
+
+                {% if empleado.estatus == "activo" %}
+                    <span class="badge bg-success">Activo</span>
+                {% elif empleado.estatus == "baja" %}
+                    <span class="badge bg-danger">Baja</span>
+                {% elif empleado.estatus == "licencia" %}
+                    <span class="badge bg-warning text-dark">Licencia</span>
+                {% elif empleado.estatus == "vacaciones" %}
+                    <span class="badge bg-info text-dark">Vacaciones</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'rrhh:empleado_lista' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+
+        {# ─── Documentos ─── #}
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-file-earmark-text"></i> Documentos
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <a class="dropdown-item" href="{% url 'rrhh:constancia_form' empleado.id %}">
+                        <i class="bi bi-file-earmark-text"></i> Constancia de Trabajo
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{% url 'rrhh:arc_form' empleado.id %}">
+                        <i class="bi bi-file-earmark-spreadsheet"></i> Planilla AR-C
+                    </a>
+                </li>
+                {% if user.perfil.es_rrhh %}
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item" href="{% url 'rrhh:documento_lista' %}">
+                        <i class="bi bi-list-ul"></i> Ver todos los emitidos
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+
+        {% if user.perfil.es_rrhh %}
+            <a href="{% url 'rrhh:empleado_editar' empleado.pk %}" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+        {% endif %}
+
+        {% if user.perfil.es_admin %}
+            <a href="{% url 'rrhh:empleado_eliminar' empleado.pk %}" class="btn btn-outline-danger">
+                <i class="bi bi-trash"></i> Eliminar
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TABS
+     ═══════════════════════════════════════════════════════════ -->
+<ul class="nav nav-tabs mb-4" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-general"
+                data-bs-toggle="tab" data-bs-target="#panel-general"
+                type="button" role="tab">
+            <i class="bi bi-person"></i> Datos generales
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-laboral"
+                data-bs-toggle="tab" data-bs-target="#panel-laboral"
+                type="button" role="tab">
+            <i class="bi bi-briefcase"></i> Datos laborales
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-auditoria"
+                data-bs-toggle="tab" data-bs-target="#panel-auditoria"
+                type="button" role="tab">
+            <i class="bi bi-clock-history"></i> Auditoría
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+
+    <!-- ═══════════════════════════════════════════════════════
+         TAB 1: DATOS GENERALES
+         ═══════════════════════════════════════════════════════ -->
+    <div class="tab-pane fade show active" id="panel-general" role="tabpanel">
+
+        <div class="row g-4">
+
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0 text-primary">
+                            <i class="bi bi-person-vcard"></i> Identificación personal
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0 detail-list">
+                            <dt class="col-sm-5">Nombre completo</dt>
+                            <dd class="col-sm-7">{{ empleado.nombre_completo }}</dd>
+
+                            <dt class="col-sm-5">Nombre(s)</dt>
+                            <dd class="col-sm-7">{{ empleado.nombre }}</dd>
+
+                            <dt class="col-sm-5">Apellido paterno</dt>
+                            <dd class="col-sm-7">{{ empleado.apellido_paterno }}</dd>
+
+                            <dt class="col-sm-5">Apellido materno</dt>
+                            <dd class="col-sm-7">{{ empleado.apellido_materno|default:"—" }}</dd>
+
+                            <dt class="col-sm-5">Cédula</dt>
+                            <dd class="col-sm-7">{{ empleado.cedula_completa }}</dd>
+
+                            <dt class="col-sm-5">RIF</dt>
+                            <dd class="col-sm-7">{{ empleado.rif|default:"—" }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0 text-primary">
+                            <i class="bi bi-telephone"></i> Información de contacto
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0 detail-list">
+                            <dt class="col-sm-5">Email</dt>
+                            <dd class="col-sm-7">
+                                <a href="mailto:{{ empleado.email }}" class="text-decoration-none">
+                                    {{ empleado.email }}
+                                </a>
+                            </dd>
+
+                            <dt class="col-sm-5">Teléfono</dt>
+                            <dd class="col-sm-7">
+                                {% if empleado.telefono %}
+                                    <a href="tel:{{ empleado.telefono }}" class="text-decoration-none">
+                                        {{ empleado.telefono }}
+                                    </a>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         TAB 2: DATOS LABORALES
+         ═══════════════════════════════════════════════════════ -->
+    <div class="tab-pane fade" id="panel-laboral" role="tabpanel">
+
+        <div class="row g-4">
+
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0 text-primary">
+                            <i class="bi bi-calendar-check"></i> Datos del contrato
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0 detail-list">
+                            <dt class="col-sm-6">Número de empleado</dt>
+                            <dd class="col-sm-6">
+                                <span class="badge bg-light text-dark font-monospace">
+                                    {{ empleado.numero_empleado }}
+                                </span>
+                            </dd>
+
+                            <dt class="col-sm-6">Fecha de ingreso</dt>
+                            <dd class="col-sm-6">{{ empleado.fecha_ingreso|date:"d/m/Y" }}</dd>
+
+                            <dt class="col-sm-6">Antigüedad</dt>
+                            <dd class="col-sm-6">
+                                {{ empleado.fecha_ingreso|timesince }}
+                            </dd>
+
+                            <dt class="col-sm-6">Estatus</dt>
+                            <dd class="col-sm-6">
+                                {% if empleado.estatus == "activo" %}
+                                    <span class="badge bg-success">{{ empleado.get_estatus_display }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ empleado.get_estatus_display }}</span>
+                                {% endif %}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0 text-primary">
+                            <i class="bi bi-cash-coin"></i> Compensación
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0 detail-list">
+                            <dt class="col-sm-6">Salario base</dt>
+                            <dd class="col-sm-6 fw-semibold text-success">
+                                Bs. {{ empleado.salario_base|floatformat:2 }}
+                            </dd>
+
+                            <dt class="col-sm-6">Salario diario</dt>
+                            <dd class="col-sm-6">
+                                Bs. {% widthratio empleado.salario_base 30 1 as salario_diario %}
+                                {{ salario_diario|floatformat:2 }}
+                            </dd>
+                        </dl>
+
+                        <hr class="my-3">
+
+                        <div class="alert alert-info small mb-0">
+                            <i class="bi bi-info-circle"></i>
+                            El cálculo de nómina se realiza según el periodo configurado.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         TAB 3: AUDITORÍA
+         ═══════════════════════════════════════════════════════ -->
+    <div class="tab-pane fade" id="panel-auditoria" role="tabpanel">
+
+        <div class="card">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 text-primary">
+                    <i class="bi bi-clock-history"></i> Historial del registro
+                </h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0 detail-list">
+                    <dt class="col-sm-4">Creado</dt>
+                    <dd class="col-sm-8">{{ empleado.created_at|date:"d/m/Y H:i:s" }}</dd>
+
+                    <dt class="col-sm-4">Última modificación</dt>
+                    <dd class="col-sm-8">{{ empleado.updated_at|date:"d/m/Y H:i:s" }}</dd>
+
+                    <dt class="col-sm-4">ID interno</dt>
+                    <dd class="col-sm-8 font-monospace">#{{ empleado.pk }}</dd>
+                </dl>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ESTILOS ADICIONALES
+     ═══════════════════════════════════════════════════════════ -->
+<style>
+    .avatar-large {
+        display: inline-flex;
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        color: #fff;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .detail-list dt {
+        color: #6b7280;
+        font-weight: 500;
+        font-size: 0.9rem;
+        padding-bottom: 0.5rem;
+    }
+
+    .detail-list dd {
+        font-size: 0.95rem;
+        padding-bottom: 0.5rem;
+    }
+
+    .nav-tabs .nav-link {
+        color: #6b7280;
+        border: none;
+        border-bottom: 2px solid transparent;
+        font-weight: 500;
+    }
+
+    .nav-tabs .nav-link.active {
+        color: #2563eb;
+        border-bottom-color: #2563eb;
+        background: transparent;
+    }
+
+    .nav-tabs .nav-link:hover:not(.active) {
+        border-bottom-color: #e5e7eb;
+    }
+</style>
+
+{% endblock %}

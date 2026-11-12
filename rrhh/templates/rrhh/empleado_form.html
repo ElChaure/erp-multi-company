@@ -1,0 +1,318 @@
+{% extends "rrhh/base.html" %}
+
+{% block title %}{{ accion }} empleado - RRHH System{% endblock %}
+
+{% block content %}
+
+<!-- ═══════════════════════════════════════════════════════════
+     ENCABEZADO
+     ═══════════════════════════════════════════════════════════ -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="mb-1">{{ accion }} empleado</h1>
+        <p class="text-muted mb-0 small">
+            {% if accion == "Editar" %}
+                Modifica los datos de <strong>{{ empleado.nombre_completo }}</strong>
+            {% else %}
+                Completa los datos para registrar un nuevo empleado
+            {% endif %}
+        </p>
+    </div>
+    <a href="{% url 'rrhh:empleado_lista' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MENSAJES DE ERROR GENERALES
+     ═══════════════════════════════════════════════════════════ -->
+{% if form.non_field_errors %}
+    <div class="alert alert-danger">
+        <strong>Errores en el formulario:</strong>
+        <ul class="mb-0 mt-2">
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════
+     FORMULARIO
+     ═══════════════════════════════════════════════════════════ -->
+<form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="row g-4">
+
+        <!-- ─── Columna izquierda: datos principales ─── -->
+        <div class="col-lg-8">
+
+            <!-- Sección: Identificación -->
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-badge text-primary"></i> Identificación
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+
+                        <div class="col-md-4">
+                            <label for="{{ form.numero_empleado.id_for_label }}" class="form-label">
+                                {{ form.numero_empleado.label }}
+                                <span class="text-danger">*</span>
+                            </label>
+                            {{ form.numero_empleado }}
+                            {% if form.numero_empleado.help_text %}
+                                <small class="text-muted d-block mt-1">
+                                    {{ form.numero_empleado.help_text }}
+                                </small>
+                            {% endif %}
+                            {% for error in form.numero_empleado.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="bi bi-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="{{ form.nombre.id_for_label }}" class="form-label">
+                                {{ form.nombre.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.nombre }}
+                            {% for error in form.nombre.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="bi bi-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="{{ form.apellido_paterno.id_for_label }}" class="form-label">
+                                {{ form.apellido_paterno.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.apellido_paterno }}
+                            {% for error in form.apellido_paterno.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="bi bi-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="{{ form.apellido_materno.id_for_label }}" class="form-label">
+                                {{ form.apellido_materno.label }}
+                            </label>
+                            {{ form.apellido_materno }}
+                            {% for error in form.apellido_materno.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="bi bi-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección: Contacto -->
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-envelope text-primary"></i> Contacto
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <label for="{{ form.email.id_for_label }}" class="form-label">
+                                {{ form.email.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.email }}
+                            {% for error in form.email.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="bi bi-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.telefono.id_for_label }}" class="form-label">
+                                {{ form.telefono.label }}
+                            </label>
+                            {{ form.telefono }}
+                            {% for error in form.telefono.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="bi bi-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección: Datos laborales -->
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-briefcase text-primary"></i> Datos laborales
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+
+                        <div class="col-md-4">
+                            <label for="{{ form.fecha_ingreso.id_for_label }}" class="form-label">
+                                {{ form.fecha_ingreso.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.fecha_ingreso }}
+                            {% for error in form.fecha_ingreso.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="bi bi-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="{{ form.salario_base.id_for_label }}" class="form-label">
+                                {{ form.salario_base.label }} <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">Bs.</span>
+                                {{ form.salario_base }}
+                            </div>
+                            {% if form.salario_base.help_text %}
+                                <small class="text-muted d-block mt-1">
+                                    {{ form.salario_base.help_text }}
+                                </small>
+                            {% endif %}
+                            {% for error in form.salario_base.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="bi bi-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="{{ form.estatus.id_for_label }}" class="form-label">
+                                {{ form.estatus.label }}
+                            </label>
+                            {{ form.estatus }}
+                            {% for error in form.estatus.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="bi bi-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ─── Columna derecha: resumen y acciones ─── -->
+        <div class="col-lg-4">
+
+            <!-- Card: Resumen -->
+            <div class="card mb-4 bg-light border-0">
+                <div class="card-body">
+                    <h6 class="text-uppercase text-muted small mb-3">
+                        <i class="bi bi-info-circle"></i> Resumen
+                    </h6>
+
+                    <ul class="list-unstyled mb-0 small">
+                        <li class="mb-2">
+                            <strong>Acción:</strong> {{ accion }}
+                        </li>
+                        {% if empleado %}
+                            <li class="mb-2">
+                                <strong>Empleado:</strong><br>
+                                {{ empleado.nombre_completo }}
+                            </li>
+                            <li class="mb-2">
+                                <strong>Registrado:</strong><br>
+                                {{ empleado.created_at|date:"d/m/Y H:i" }}
+                            </li>
+                            {% if empleado.updated_at %}
+                                <li class="mb-2">
+                                    <strong>Última modificación:</strong><br>
+                                    {{ empleado.updated_at|date:"d/m/Y H:i" }}
+                                </li>
+                            {% endif %}
+                        {% endif %}
+                        <li>
+                            <strong>Campos obligatorios:</strong> marcados con
+                            <span class="text-danger">*</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Card: Acciones -->
+            <div class="card">
+                <div class="card-body">
+                    <button type="submit" class="btn btn-primary w-100 mb-2">
+                        <i class="bi bi-check-lg"></i>
+                        {% if accion == "Editar" %}
+                            Guardar cambios
+                        {% else %}
+                            Crear empleado
+                        {% endif %}
+                    </button>
+
+                    <a href="{% if empleado %}{% url 'rrhh:empleado_detalle' empleado.pk %}{% else %}{% url 'rrhh:empleado_lista' %}{% endif %}"
+                       class="btn btn-outline-secondary w-100">
+                        Cancelar
+                    </a>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</form>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ESTILOS ADICIONALES
+     ═══════════════════════════════════════════════════════════ -->
+<style>
+    .form-label {
+        font-weight: 500;
+        font-size: 0.9rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+    }
+
+    .input-group-text {
+        background-color: #f9fafb;
+        border-right: none;
+        font-weight: 500;
+    }
+
+    .input-group .form-control {
+        border-left: none;
+    }
+
+    .card-header {
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .card-header h5 {
+        font-size: 1rem;
+    }
+
+    @media (max-width: 992px) {
+        .col-lg-4 {
+            margin-top: 1rem;
+        }
+    }
+</style>
+
+{% endblock %}

@@ -1,0 +1,251 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}Centro de Reportes - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div id="content-main">
+
+    <h1>Centro de Reportes</h1>
+    <p class="help">Genera y descarga reportes del sistema en PDF o Excel.</p>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!--  REPORTES MAESTROS                               -->
+    <!-- ═══════════════════════════════════════════════ -->
+
+    <div class="module">
+        <h2>Reportes Maestros</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tbody>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Empresas</strong></td>
+                    <td style="padding: 10px;">Listado de empresas con contadores de sedes y empleados</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/empresas/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Sedes</strong></td>
+                    <td style="padding: 10px;">Listado de sedes con filtros por empresa y tipo</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/sedes/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Departamentos</strong></td>
+                    <td style="padding: 10px;">Departamentos con jerarquía, responsable y presupuesto</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/departamentos/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Cargos</strong></td>
+                    <td style="padding: 10px;">Cargos con rango salarial y empleados asignados</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/cargos/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Empleados</strong></td>
+                    <td style="padding: 10px;">Listado completo con múltiples filtros</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/empleados/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Conceptos de Nómina</strong></td>
+                    <td style="padding: 10px;">Catálogo de conceptos con tipo y naturaleza</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/conceptos/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Parámetros de Nómina</strong></td>
+                    <td style="padding: 10px;">Configuración legal por empresa y año</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/parametros/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px;"><strong>Incidencias</strong></td>
+                    <td style="padding: 10px;">Faltas, horas extra, retardos, incapacidades</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/incidencias/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!--  REPORTES DE NÓMINA                              -->
+    <!-- ═══════════════════════════════════════════════ -->
+
+    <div class="module" style="margin-top: 20px;">
+        <h2>Reportes de Nómina</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tbody>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Costo por Departamento</strong></td>
+                    <td style="padding: 10px;">Costos de nómina agrupados por departamento</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/nomina/costo-departamento/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Costo por Cargo</strong></td>
+                    <td style="padding: 10px;">Costos de nómina agrupados por cargo</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/nomina/costo-cargo/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Retenciones ISLR</strong></td>
+                    <td style="padding: 10px;">Retenciones de ISLR por empleado</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/nomina/retenciones-islr/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Aportes a Entes</strong></td>
+                    <td style="padding: 10px;">Aportes obreros y patronales</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/nomina/aportes-entes/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px;"><strong>Resumen de Períodos</strong></td>
+                    <td style="padding: 10px;">Totales por período de nómina</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/nomina/resumen-periodos/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!--  REPORTES DE AUSENCIAS                           -->
+    <!-- ═══════════════════════════════════════════════ -->
+
+    <div class="module" style="margin-top: 20px;">
+        <h2>Reportes de Ausencias</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tbody>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Saldos de Vacaciones</strong></td>
+                    <td style="padding: 10px;">Saldo por empleado del año</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/ausencias/saldos/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Solicitudes</strong></td>
+                    <td style="padding: 10px;">Listado de solicitudes en un rango</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/ausencias/solicitudes/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Próximas Ausencias</strong></td>
+                    <td style="padding: 10px;">Vacaciones programadas en los próximos 30 días</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/ausencias/proximas/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Por Departamento</strong></td>
+                    <td style="padding: 10px;">Resumen de ausencias por departamento</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/ausencias/departamento/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px;"><strong>Por Tipo</strong></td>
+                    <td style="padding: 10px;">Resumen de ausencias por tipo</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/ausencias/tipo/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!--  AUDITORÍA                                       -->
+    <!-- ═══════════════════════════════════════════════ -->
+
+    <div class="module" style="margin-top: 20px;">
+        <h2>Auditoría del Sistema</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tbody>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Log completo</strong></td>
+                    <td style="padding: 10px;">Historial de cambios, accesos y acciones</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/auditoria/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Por Usuario</strong></td>
+                    <td style="padding: 10px;">Resumen de actividad por usuario</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/auditoria/por-usuario/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Por Tabla</strong></td>
+                    <td style="padding: 10px;">Cambios agrupados por tabla</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/auditoria/por-tabla/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>Por Acción</strong></td>
+                    <td style="padding: 10px;">Distribución de acciones realizadas</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/auditoria/por-accion/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px;"><strong>Actividad Diaria</strong></td>
+                    <td style="padding: 10px;">Acciones por día en los últimos 30 días</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <a href="/admin/reportes/auditoria/diaria/" class="button">Ver y descargar</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<style>
+    .module {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 0;
+        overflow: hidden;
+    }
+    .module h2 {
+        background: #417690;
+        color: white;
+        padding: 10px 15px;
+        margin: 0;
+        font-size: 14px;
+    }
+    .button {
+        display: inline-block;
+        background: #417690;
+        color: white !important;
+        padding: 6px 14px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    .button:hover {
+        background: #2e5568;
+    }
+</style>
+{% endblock %}

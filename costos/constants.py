@@ -1,0 +1,42 @@
+# costos/constants.py
+
+# Tipos de Recursos
+TIPO_RECURSO_MAQUINA = "MAQUINA"
+TIPO_RECURSO_MANO_OBRA = "MANO_OBRA"
+TIPO_RECURSO_INSUMO = "INSUMO"
+
+TIPO_RECURSO_CHOICES = [
+    (TIPO_RECURSO_MAQUINA, "Máquina / Equipo"),
+    (TIPO_RECURSO_MANO_OBRA, "Mano de Obra (Empleado)"),
+    (TIPO_RECURSO_INSUMO, "Insumo / Materia Prima"),
+]
+
+# Tipos de Unidad de Medida
+UNIDAD_HORA = "HORA"
+UNIDAD_KILO = "KG"
+UNIDAD_LITRO = "LITRO"
+UNIDAD_METRO = "METRO"
+UNIDAD_UNIDAD = "UNIDAD"
+UNIDAD_RESMA = "RESMA"
+
+UNIDAD_CHOICES = [
+    (UNIDAD_HORA, "Horas"),
+    (UNIDAD_KILO, "Kilos"),
+    (UNIDAD_LITRO, "Litros"),
+    (UNIDAD_METRO, "Metros"),
+    (UNIDAD_UNIDAD, "Unidades"),
+    (UNIDAD_RESMA, "Resmas"),
+]
+
+# Estados de la Orden de Producción
+ESTADO_BORRADOR = "BORRADOR"
+ESTADO_EN_PROCESO = "EN_PROCESO"
+ESTADO_FINALIZADO = "FINALIZADO"
+ESTADO_CANCELADO = "CANCELADO"
+
+ESTADO_ORDEN_CHOICES = [
+    (ESTADO_BORRADOR, "Borrador"),
+    (ESTADO_EN_PROCESO, "En Proceso"),
+    (ESTADO_FINALIZADO, "Finalizado"),
+    (ESTADO_CANCELADO, "Cancelado"),
+]

@@ -1,0 +1,404 @@
+{% extends "rrhh/base.html" %}
+{% load l10n %}
+{% block title %}Configuración CIF — {{ empresa.razon_social }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  {# ═══════════════ ENCABEZADO ═══════════════ #}
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h4 class="mb-0">
+        <i class="bi bi-gear text-primary"></i>
+        Configuración de Reparto de CIF
+      </h4>
+      <small class="text-muted">{{ empresa.razon_social }}</small>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'contabilidad:cif_reporte' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver al reporte
+      </a>
+      <a href="{% url 'contabilidad:cif_reporte' %}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-pie-chart"></i> Ver reporte
+      </a>
+    </div>
+  </div>
+
+  {% if not config %}
+    {# ═══════════════ CREAR CONFIGURACIÓN ═══════════════ #}
+    <div class="card shadow-sm">
+      <div class="card-body text-center py-5">
+        <i class="bi bi-gear fs-1 text-muted"></i>
+        <h5 class="mt-3">No hay configuración de reparto de CIF</h5>
+        <p class="text-muted mb-3">
+          Crea una configuración para definir el driver, el centro PIVOT y los coeficientes de cada máquina.
+        </p>
+        <div class="d-flex justify-content-center gap-2">
+          <form method="post" class="d-inline">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="crear">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-plus-circle"></i> Crear configuración CIF
+            </button>
+          </form>
+          <a href="{% url 'contabilidad:cif_reporte' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Cancelar
+          </a>
+        </div>
+      </div>
+    </div>
+  {% else %}
+
+  <form method="post" id="form-cif">
+    {% csrf_token %}
+    <input type="hidden" name="accion" value="guardar">
+
+    {# ═══════════════ CABECERA ═══════════════ #}
+    <div class="card shadow-sm mb-3">
+      <div class="card-header bg-white">
+        <strong><i class="bi bi-sliders text-primary"></i> Cabecera de la configuración</strong>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Driver de reparto</label>
+            <select name="driver" class="form-select form-select-sm" id="select-driver">
+              {% for valor, etiqueta in drivers %}
+                <option value="{{ valor }}" {% if config.driver == valor %}selected{% endif %}>
+                  {{ etiqueta }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Método de cálculo</label>
+            <select name="metodo" class="form-select form-select-sm">
+              {% for valor, etiqueta in metodos %}
+                <option value="{{ valor }}" {% if config.metodo == valor %}selected{% endif %}>
+                  {{ etiqueta }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Centro PIVOT</label>
+            <select name="centro_pivot" class="form-select form-select-sm" id="select-pivot">
+              <option value="">— Sin pivot —</option>
+              {% for cc in centros %}
+                <option value="{{ cc.id }}" {% if config.centro_pivot and config.centro_pivot.id == cc.id %}selected{% endif %}>
+                  {{ cc.codigo }} — {{ cc.nombre }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-semibold">Base del PIVOT</label>
+            <input type="number"
+                   name="base_pivot"
+                   id="input-base"
+                   class="form-control form-control-sm"
+                   step="0.0001"
+                   min="0"
+                   value="{{ config.base_pivot|default_if_none:''|unlocalize }}"
+                   placeholder="Ej: 7000">
+          </div>
+          <div class="col-md-1 d-flex align-items-end">
+            <div class="form-check">
+              <input class="form-check-input"
+                     type="checkbox"
+                     name="activa"
+                     id="check-activa"
+                     {% if config.activa %}checked{% endif %}>
+              <label class="form-check-label small fw-semibold" for="check-activa">
+                Activa
+              </label>
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Notas</label>
+            <textarea name="notas" class="form-control form-control-sm" rows="2"
+                      placeholder="Observaciones sobre el criterio de reparto...">{{ config.notas }}</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ═══════════════ TABLA DE CENTROS ═══════════════ #}
+    <div class="card shadow-sm mb-3">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <strong><i class="bi bi-table text-primary"></i> Detalle por Centro de Costo</strong>
+        <small class="text-muted">
+          Los campos del driver no aplicable están deshabilitados.
+          Deja el coeficiente manual vacío para usar el cálculo automático.
+        </small>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height: 65vh; overflow-y: auto;">
+          <table class="table table-sm table-bordered align-middle mb-0" id="tabla-cif">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th rowspan="2" class="align-middle" style="min-width: 180px;">Centro de Costo</th>
+                <th colspan="5" class="text-center border-start">Valor del Driver</th>
+                <th rowspan="2" class="text-end align-middle border-start" style="min-width: 100px;">Coef. Manual</th>
+                <th rowspan="2" class="text-end align-middle" style="min-width: 100px;">Coef. Calculado</th>
+              </tr>
+              <tr>
+                <th class="text-center border-start driver-col" data-driver="AREA">Área (cm²)</th>
+                <th class="text-center driver-col" data-driver="HORAS_MAQUINA">Horas-Máq.</th>
+                <th class="text-center driver-col" data-driver="HORAS_HOMBRE">Horas-Hom.</th>
+                <th class="text-center driver-col" data-driver="UNIDADES">Unidades</th>
+                <th class="text-center driver-col" data-driver="COSTO_DIRECTO">Costo Directo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for fila in filas %}
+                {% with cc=fila.centro cdc=fila.cdc %}
+                <tr data-cc-id="{{ cc.id }}"
+                    {% if config.centro_pivot and config.centro_pivot.id == cc.id %}class="table-warning pivot-row"{% endif %}>
+                  <td>
+                    <input type="hidden" name="cc_id" value="{{ cc.id }}">
+                    <div class="fw-semibold">
+                      {{ cc.codigo }} — {{ cc.nombre }}
+                      {% if config.centro_pivot and config.centro_pivot.id == cc.id %}
+                        <span class="badge bg-warning text-dark ms-1">PIVOT</span>
+                      {% endif %}
+                    </div>
+                    <small class="text-muted">{{ cc.get_tipo_display }}</small>
+                  </td>
+
+                  <!-- Inputs type=number llevan |unlocalize para forzar punto decimal -->
+                  <td>
+                    <input type="number" step="0.0001" min="0"
+                           name="area_{{ cc.id }}"
+                           id="area_{{ cc.id }}"
+                           class="form-control form-control-sm text-end input-driver driver-AREA"
+                           data-cc-id="{{ cc.id }}"
+                           data-driver="AREA"
+                           value="{{ fila.area|default_if_none:''|unlocalize }}">
+                  </td>
+                  <td>
+                    <input type="number" step="0.01" min="0"
+                           name="horas_maquina_{{ cc.id }}"
+                           id="horas_maquina_{{ cc.id }}"
+                           class="form-control form-control-sm text-end input-driver driver-HORAS_MAQUINA"
+                           data-cc-id="{{ cc.id }}"
+                           data-driver="HORAS_MAQUINA"
+                           value="{{ fila.horas_maquina|default_if_none:''|unlocalize }}">
+                  </td>
+                  <td>
+                    <input type="number" step="0.01" min="0"
+                           name="horas_hombre_{{ cc.id }}"
+                           id="horas_hombre_{{ cc.id }}"
+                           class="form-control form-control-sm text-end input-driver driver-HORAS_HOMBRE"
+                           data-cc-id="{{ cc.id }}"
+                           data-driver="HORAS_HOMBRE"
+                           value="{{ fila.horas_hombre|default_if_none:''|unlocalize }}">
+                  </td>
+                  <td>
+                    <input type="number" step="0.0001" min="0"
+                           name="unidades_{{ cc.id }}"
+                           id="unidades_{{ cc.id }}"
+                           class="form-control form-control-sm text-end input-driver driver-UNIDADES"
+                           data-cc-id="{{ cc.id }}"
+                           data-driver="UNIDADES"
+                           value="{{ fila.unidades|default_if_none:''|unlocalize }}">
+                  </td>
+                  <td>
+                    <input type="number" step="0.01" min="0"
+                           name="costo_directo_{{ cc.id }}"
+                           id="costo_directo_{{ cc.id }}"
+                           class="form-control form-control-sm text-end input-driver driver-COSTO_DIRECTO"
+                           data-cc-id="{{ cc.id }}"
+                           data-driver="COSTO_DIRECTO"
+                           value="{{ fila.costo_directo|default_if_none:''|unlocalize }}">
+                  </td>
+
+                  {# ── Coef. manual ── #}
+                  <td>
+                    <input type="number" step="0.000001"
+                           name="coef_manual_{{ cc.id }}"
+                           id="coef_manual_{{ cc.id }}"
+                           class="form-control form-control-sm text-end input-coef-manual"
+                           data-cc-id="{{ cc.id }}"
+                           value="{{ fila.coef_manual|default_if_none:''|unlocalize }}"
+                           placeholder="auto">
+                  </td>
+
+                  {# ── Coef. calculado (readonly, se actualiza con JS) ── #}
+                  <td class="text-end">
+                    <span class="fw-semibold coef-calculado" id="coef_calc_{{ cc.id }}">
+                      {% if fila.coef_calculado is not None %}
+                        {{ fila.coef_calculado|floatformat:6 }}
+                      {% else %}
+                        —
+                      {% endif %}
+                    </span>
+                  </td>
+                </tr>
+                {% endwith %}
+              {% endfor %}
+            </tbody>
+            <tfoot class="table-light">
+              <tr>
+                <th class="text-end" colspan="2">Centros: {{ filas|length }}</th>
+                <th class="text-end" colspan="6">
+                  <span class="small text-muted">
+                    Suma de coeficientes:
+                    <span id="suma-coeficientes" class="fw-semibold">—</span>
+                  </span>
+                </th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    {# ═══════════════ BOTONES ═══════════════ #}
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-save"></i> Guardar configuración
+        </button>
+        <button type="submit" name="accion" value="recalcular" class="btn btn-outline-info">
+          <i class="bi bi-arrow-repeat"></i> Recalcular coeficientes
+        </button>
+        <a href="{% url 'contabilidad:cif_reporte' %}" class="btn btn-outline-secondary">
+          <i class="bi bi-x-circle"></i> Cancelar
+        </a>
+      </div>
+      <button type="submit"
+              name="accion"
+              value="reset"
+              class="btn btn-outline-danger btn-sm"
+              onclick="return confirm('¿Borrar toda la configuración CIF? Esta acción no se puede deshacer.');">
+        <i class="bi bi-trash"></i> Eliminar configuración
+      </button>
+    </div>
+  </form>
+
+  {% endif %}
+
+</div>
+
+{% if config %}
+<script>
+(function () {
+  "use strict";
+
+  const form = document.getElementById("form-cif");
+  const selectDriver = document.getElementById("select-driver");
+  const selectPivot = document.getElementById("select-pivot");
+  const inputBase = document.getElementById("input-base");
+  const filas = document.querySelectorAll("#tabla-cif tbody tr[data-cc-id]");
+
+  function aplicarDriver() {
+    const driver = selectDriver.value;
+    document.querySelectorAll(".driver-col").forEach(function (th) {
+      th.style.opacity = th.dataset.driver === driver ? "1" : "0.4";
+    });
+    document.querySelectorAll(".input-driver").forEach(function (inp) {
+      const esActivo = inp.dataset.driver === driver;
+      inp.disabled = !esActivo;
+      inp.parentElement.style.opacity = esActivo ? "1" : "0.4";
+    });
+  }
+
+  function val(id) {
+    const el = document.getElementById(id);
+    if (!el) return 0;
+    const n = parseFloat(el.value);
+    return isFinite(n) ? n : 0;
+  }
+
+  function recalcularPreview() {
+    const driver = selectDriver.value;
+    const base = parseFloat(inputBase.value) || 0;
+    const pivotId = selectPivot.value;
+
+    let sumaCoefs = 0;
+
+    filas.forEach(function (tr) {
+      const ccId = tr.dataset.ccId;
+
+      const manualEl = document.getElementById("coef_manual_" + ccId);
+      const manual = manualEl && manualEl.value.trim() !== ""
+        ? parseFloat(manualEl.value)
+        : null;
+
+      let coef = 0;
+      let esAuto = false;
+
+      if (manual !== null && isFinite(manual)) {
+        coef = manual;
+      } else if (driver === "PERSONALIZADO") {
+        coef = 0;
+      } else if (driver === "AREA") {
+        const area = val("area_" + ccId);
+        if (base > 0) { coef = area / base; esAuto = true; }
+      } else if (driver === "HORAS_MAQUINA") {
+        coef = base > 0 ? val("horas_maquina_" + ccId) / base : 0;
+        esAuto = true;
+      } else if (driver === "HORAS_HOMBRE") {
+        coef = base > 0 ? val("horas_hombre_" + ccId) / base : 0;
+        esAuto = true;
+      } else if (driver === "UNIDADES") {
+        coef = base > 0 ? val("unidades_" + ccId) / base : 0;
+        esAuto = true;
+      } else if (driver === "COSTO_DIRECTO") {
+        coef = base > 0 ? val("costo_directo_" + ccId) / base : 0;
+        esAuto = true;
+      }
+
+      const span = document.getElementById("coef_calc_" + ccId);
+      if (span) {
+        span.textContent = coef.toFixed(6);
+        span.classList.toggle("text-muted", !esAuto && manual === null);
+        span.classList.toggle("fw-semibold", esAuto || manual !== null);
+      }
+
+      tr.classList.toggle("pivot-row", String(ccId) === String(pivotId));
+      tr.classList.toggle("table-warning", String(ccId) === String(pivotId));
+
+      sumaCoefs += coef;
+    });
+
+    const sumaEl = document.getElementById("suma-coeficientes");
+    if (sumaEl) {
+      sumaEl.textContent = sumaCoefs.toFixed(6);
+    }
+  }
+
+  selectDriver.addEventListener("change", function () {
+    aplicarDriver();
+    recalcularPreview();
+  });
+
+  selectPivot.addEventListener("change", recalcularPreview);
+
+  inputBase.addEventListener("input", recalcularPreview);
+
+  document.querySelectorAll(".input-driver, .input-coef-manual").forEach(function (inp) {
+    inp.addEventListener("input", recalcularPreview);
+  });
+
+  aplicarDriver();
+  recalcularPreview();
+})();
+</script>
+{% endif %}
+
+<style>
+  .pivot-row {
+    background-color: #fffbea !important;
+  }
+  #tabla-cif .input-driver,
+  #tabla-cif .input-coef-manual {
+    min-width: 80px;
+  }
+  #tabla-cif td, #tabla-cif th {
+    font-size: 0.85rem;
+    vertical-align: middle;
+  }
+</style>
+{% endblock %}

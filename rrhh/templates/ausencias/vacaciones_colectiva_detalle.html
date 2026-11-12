@@ -1,0 +1,169 @@
+{% extends "rrhh/base.html" %}
+{% block title %}{{ vacacion.nombre }} - RRHH{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start mb-4 gap-3">
+    <div>
+        <a href="{% url 'rrhh:vacaciones_colectivas_lista' %}" class="text-muted small text-decoration-none">
+            <i class="bi bi-arrow-left"></i> Volver a colectivas
+        </a>
+        <h1 class="mb-1 mt-1">{{ vacacion.nombre }}</h1>
+        <p class="text-muted mb-0 small">
+            {{ vacacion.empresa.razon_social }}
+            · {{ vacacion.get_alcance_display }}
+            {% if vacacion.sede %}· {{ vacacion.sede.nombre }}{% endif %}
+            {% if vacacion.departamento %}· {{ vacacion.departamento.nombre }}{% endif %}
+        </p>
+    </div>
+    <div class="text-end">
+        {% if vacacion.estatus == "borrador" %}
+        <span class="badge bg-warning text-dark fs-6 mb-2">Borrador</span>
+        {% if total_empleados_alcance > 0 %}
+        <form method="post" action="{% url 'rrhh:vacaciones_aplicar_colectiva' vacacion.id %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success d-block w-100 mt-1"
+                    onclick="return confirm('¿Aplicar esta vacación colectiva? Se generarán {{ total_empleados_alcance }} solicitudes y se descontarán los días del saldo correspondiente. Esta acción no se puede deshacer fácilmente.')">
+                <i class="bi bi-check2-circle"></i> Aplicar ahora
+            </button>
+        </form>
+        {% endif %}
+        {% elif vacacion.estatus == "aplicada" %}
+        <span class="badge bg-success fs-6">Aplicada</span>
+        {% elif vacacion.estatus == "cancelada" %}
+        <span class="badge bg-secondary fs-6">Cancelada</span>
+        {% endif %}
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════ #}
+{# DATOS GENERALES                                   #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Fechas</h6>
+                <p class="mb-1 small">
+                    <strong>Inicio:</strong> {{ vacacion.fecha_inicio|date:"d/m/Y" }}
+                </p>
+                <p class="mb-0 small">
+                    <strong>Fin:</strong> {{ vacacion.fecha_fin|date:"d/m/Y" }}
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Días hábiles</h6>
+                <h3 class="mb-0 text-primary">{{ vacacion.dias_habiles }}</h3>
+                <small class="text-muted">Descontados del saldo</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Empleados en alcance</h6>
+                <h3 class="mb-0">{{ total_empleados_alcance }}</h3>
+                <small class="text-muted">Activos al momento</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small mb-2">Solicitudes generadas</h6>
+                <h3 class="mb-0 {% if total_solicitudes > 0 %}text-success{% endif %}">
+                    {{ total_solicitudes }}
+                </h3>
+                <small class="text-muted">
+                    {% if vacacion.aplicada_at %}
+                    Aplicada el {{ vacacion.aplicada_at|date:"d/m/Y H:i" }}
+                    {% else %}
+                    Pendiente de aplicar
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ═══════════════════════════════════════════════════ #}
+{# OBSERVACIONES                                     #}
+{# ═══════════════════════════════════════════════════ #}
+{% if vacacion.observaciones %}
+<div class="alert alert-light border mb-4">
+    <h6 class="mb-2 small text-muted text-uppercase">Observaciones</h6>
+    <p class="mb-0 small">{{ vacacion.observaciones|linebreaksbr }}</p>
+</div>
+{% endif %}
+
+{# ═══════════════════════════════════════════════════ #}
+{# SOLICITUDES GENERADAS                             #}
+{# ═══════════════════════════════════════════════════ #}
+<div class="card mb-4">
+    <div class="card-header bg-white">
+        <h6 class="mb-0">
+            <i class="bi bi-list-ul text-secondary"></i>
+            Solicitudes generadas
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        {% if solicitudes %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Empleado</th>
+                        <th>Cargo</th>
+                        <th class="text-center">Días</th>
+                        <th class="text-center">Estatus</th>
+                        <th>Motivo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sol in solicitudes %}
+                    <tr>
+                        <td>
+                            <div class="fw-semibold small">{{ sol.empleado.nombre_completo }}</div>
+                            <div class="text-muted" style="font-size: 11px;">
+                                {{ sol.empleado.numero_empleado }}
+                            </div>
+                        </td>
+                        <td class="small">{{ sol.empleado.cargo.nombre|default:"—" }}</td>
+                        <td class="text-center">{{ sol.dias_solicitados|floatformat:0 }}</td>
+                        <td class="text-center">
+                            {% if sol.estatus == "aprobada" %}
+                            <span class="badge bg-success">Aprobada</span>
+                            {% elif sol.estatus == "pendiente" %}
+                            <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% elif sol.estatus == "cancelada" %}
+                            <span class="badge bg-secondary">Cancelada</span>
+                            {% else %}
+                            <span class="badge bg-light text-dark">{{ sol.get_estatus_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="small text-muted">{{ sol.motivo|default:"—"|truncatechars:60 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-info-circle fs-1 d-block mb-2"></i>
+            <p class="mb-0">
+                {% if vacacion.estatus == "borrador" %}
+                Esta vacación colectiva aún no ha sido aplicada.
+                Al aplicarla se generarán las solicitudes.
+                {% else %}
+                No se generaron solicitudes.
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

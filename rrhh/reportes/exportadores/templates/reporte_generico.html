@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ titulo }}</title>
+    <style>
+        @page {
+            size: {% if orientacion == 'landscape' %}A4 landscape{% else %}A4{% endif %};
+            margin: 1.5cm;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 8pt;
+            color: #111;
+            line-height: 1.3;
+        }
+
+        /* ═════════════════════════════════════════════════ */
+        /*  HEADER CON LOGO                                  */
+        /* ═════════════════════════════════════════════════ */
+
+        .header-table {
+            width: 100%;
+            border-bottom: 2px solid #1e40af;
+            margin-bottom: 10px;
+        }
+
+        .header-table td {
+            vertical-align: middle;
+            padding-bottom: 8px;
+        }
+
+        .logo-cell {
+            width: 80px;
+        }
+
+        .logo {
+            width: 60px;
+            height: 60px;
+        }
+
+        .logo-fallback {
+            width: 60px;
+            height: 60px;
+            background-color: #1e40af;
+            color: #ffffff;
+            text-align: center;
+            font-size: 22pt;
+            font-weight: bold;
+            line-height: 60px;
+        }
+
+        .empresa-cell h1 {
+            font-size: 12pt;
+            color: #1e40af;
+            margin: 0 0 2px 0;
+        }
+
+        .empresa-cell .rif {
+            font-size: 7pt;
+            color: #666666;
+        }
+
+        .titulo-cell {
+            text-align: right;
+        }
+
+        .titulo-cell .titulo {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #1e40af;
+        }
+
+        .titulo-cell .subtitulo {
+            font-size: 7pt;
+            color: #888888;
+            margin-top: 3px;
+        }
+
+        /* ═════════════════════════════════════════════════ */
+        /*  METADATA / FILTROS                               */
+        /* ═════════════════════════════════════════════════ */
+
+        .metadata {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            padding: 5px 8px;
+            margin-bottom: 10px;
+            font-size: 7pt;
+            color: #666666;
+        }
+
+        .metadata strong {
+            color: #111111;
+        }
+
+        /* ═════════════════════════════════════════════════ */
+        /*  TABLA DE DATOS                                   */
+        /* ═════════════════════════════════════════════════ */
+
+        table.datos {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table.datos thead th {
+            background-color: #1e40af;
+            color: #ffffff;
+            padding: 5px 6px;
+            text-align: left;
+            font-size: 7.5pt;
+            font-weight: bold;
+            border: 1px solid #1e40af;
+        }
+
+        table.datos thead th.center { text-align: center; }
+        table.datos thead th.right  { text-align: right; }
+
+        table.datos tbody td {
+            padding: 4px 6px;
+            border: 1px solid #e5e7eb;
+            font-size: 7pt;
+            vertical-align: top;
+        }
+
+        table.datos tbody td.center { text-align: center; }
+        table.datos tbody td.right  {
+            text-align: right;
+            font-family: Courier, monospace;
+        }
+
+        table.datos tbody tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+
+        table.datos tbody tr.total {
+            background-color: #f0fdf4;
+            font-weight: bold;
+            color: #059669;
+        }
+
+        table.datos tbody tr.total td {
+            border-top: 2px solid #059669;
+        }
+
+        /* ═════════════════════════════════════════════════ */
+        /*  PIE                                              */
+        /* ═════════════════════════════════════════════════ */
+
+        .footer {
+            margin-top: 15px;
+            font-size: 6.5pt;
+            color: #888888;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 5px;
+        }
+
+        .sin-datos {
+            text-align: center;
+            padding: 30px;
+            color: #999999;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<table class="header-table">
+    <tr>
+        <td class="logo-cell">
+            {% if logo_base64 %}
+                <img src="data:image/png;base64,{{ logo_base64 }}" class="logo" alt="Logo">
+            {% else %}
+                <div class="logo-fallback">{{ empresa_initial }}</div>
+            {% endif %}
+        </td>
+        <td class="empresa-cell">
+            {% if empresa %}
+                <h1>{{ empresa.nombre_comercial|default:empresa.razon_social }}</h1>
+                <div class="rif">RIF: {{ empresa.rif }}</div>
+            {% endif %}
+        </td>
+        <td class="titulo-cell">
+            <div class="titulo">{{ titulo }}</div>
+            {% if subtitulo %}
+                <div class="subtitulo">{{ subtitulo }}</div>
+            {% endif %}
+        </td>
+    </tr>
+</table>
+
+<!-- METADATA -->
+{% if metadata %}
+<div class="metadata">
+    {% for key, value in metadata.items %}
+        <strong>{{ key }}:</strong> {{ value }}{% if not forloop.last %} · {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- TABLA -->
+{% if datos %}
+<table class="datos">
+    <thead>
+        <tr>
+            {% for col in columnas %}
+                <th style="width: {{ col.width }}px;"
+                    class="{% if col.align == 'center' %}center{% elif col.align == 'right' %}right{% endif %}">
+                    {{ col.label }}
+                </th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for fila in datos %}
+            <tr>
+                {% for col in columnas %}
+                    <td class="{% if col.align == 'center' %}center{% elif col.align == 'right' %}right{% endif %}">
+                        {% for key, value in fila.items %}
+                            {% if key == col.key %}{{ value }}{% endif %}
+                        {% endfor %}
+                    </td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+
+        {% if tiene_totales %}
+            <tr class="total">
+                {% for col in columnas %}
+                    {% if forloop.first %}
+                        <td>TOTALES</td>
+                    {% else %}
+                        <td class="right">
+                            {% for key, value in totales.items %}
+                                {% if key == col.key %}{{ value }}{% endif %}
+                            {% endfor %}
+                        </td>
+                    {% endif %}
+                {% endfor %}
+            </tr>
+        {% endif %}
+    </tbody>
+</table>
+{% else %}
+<div class="sin-datos">No hay datos para mostrar con los filtros aplicados.</div>
+{% endif %}
+
+<!-- PIE -->
+<div class="footer">
+    Reporte generado automáticamente por el Sistema RRHH el {% now "d/m/Y H:i" %}
+</div>
+
+</body>
+</html>
